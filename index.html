@@ -7,12 +7,6 @@
     
     <!-- Telegram WebApp SDK -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <!-- Canvas Confetti для салюту -->
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
-    <!-- Віртуальна консоль Eruda -->
-    <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
-    <script>eruda.init();</script>
-
     <style>
         :root {
             --bg-color: #0b0e14;
@@ -201,6 +195,12 @@
 
         .btn-insurance-buy:disabled { opacity: 0.4; border-color: var(--text-dim); color: var(--text-dim); }
 
+        .btn-insurance-buy.owned {
+            background: rgba(46, 213, 115, 0.15);
+            color: #2ed573;
+            border: 1px solid #2ed573;
+        }
+
         .modal-overlay {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
@@ -274,7 +274,7 @@
             <span>Страховка: <strong id="insurance-price" style="color:#ffb703;">$4.99</strong></span>
         </div>
         
-        <button class="btn btn-insurance-buy" id="buy-insurance-btn" onclick="buyInsurance()">
+        <button class="btn btn-insurance-buy" id="buy-insurance-btn" onclick="handleInsuranceClick()">
             🛡️ Купити страховку ($4.99)
         </button>
     </div>
@@ -303,9 +303,15 @@
         </div>
     </div>
 
+    <!-- Canvas Confetti (не блокує рендер, підвантажується в кінці) -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <!-- Eruda: консоль для відлагодження на смартфоні. ВИДАЛІТЬ ці 2 рядки перед фінальним релізом -->
+    <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+    <script>eruda.init();</script>
+
     <script>
         // Ініціалізація Telegram SDK безпечно
-        const tg = window.Telegram?.WebApp;
+        const tg = (window.Telegram && window.Telegram.WebApp) ? window.Telegram.WebApp : null;
         if (tg) {
             tg.ready();
             tg.expand();
@@ -417,12 +423,15 @@
             if (currentRoom === 13) {
                 buyBtn.innerText = "❌ Страховка заборонена в 13 кімнаті";
                 buyBtn.disabled = true;
+                buyBtn.classList.remove('owned');
             } else if (hasInsurance) {
-                buyBtn.innerText = "🛡️ Страховка АКТИВНА";
-                buyBtn.disabled = true;
+                buyBtn.innerText = "🛡️ Активувати страховку (повернути 50%)";
+                buyBtn.disabled = false;
+                buyBtn.classList.add('owned');
             } else {
                 buyBtn.innerText = `🛡️ Купити страховку ($${currentInsuranceCost.toFixed(2)})`;
                 buyBtn.disabled = false;
+                buyBtn.classList.remove('owned');
             }
         }
 
@@ -437,7 +446,8 @@
             if (doorElem.classList.contains('wrong') || doorElem.classList.contains('trap')) return;
 
             if (userBalance < keyPrice) {
-                alert(`Недостатньо $ROOM! Для відкриття потрібен ключ за ${keyPrice} $ROOM.`);
+                alert(`Недостатньо $ROOM! Для відкриття потрібен ключ за ${keyPrice} $ROOM.\n\n💳 Поповніть баланс, щоб продовжити гру.`);
+                openTopUpModal();
                 return;
             }
 
@@ -446,12 +456,12 @@
             roomKeysSpent += keyPrice;
             updateWalletUI();
 
-            if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
+            if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
 
             if (selected === winningDoor) {
                 // Ефект салюту при перемозі
                 if (window.confetti) confetti({ particleCount: 60, spread: 60, origin: { y: 0.7 } });
-                if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+                if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
 
                 if (currentRoom === 13) {
                     showFinalVictoryModal();
@@ -470,18 +480,10 @@
                 // Ефект тряски та вібрації при вибуху
                 document.body.classList.add('shake-effect');
                 setTimeout(() => document.body.classList.remove('shake-effect'), 400);
-                if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
+                if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
 
                 if (hasInsurance) {
-                    const refund = roomKeysSpent * 0.5;
-                    userBalance += refund;
-                    totalSpent -= refund;
-
-                    alert(`💥 ПАСТКА!\n\n🛡️ Страховка спрацювала! Вам повернуто 50% витрат на ключі (${refund.toFixed(2)} $ROOM).\nКімната перезапускається!`);
-                    
-                    hasInsurance = false;
-                    resetRoomState(false);
-                    renderRoom();
+                    useInsurance('trap');
                 } else {
                     alert(`💥 ПАСТКА! У вас не було страховки.\n\n💀 GAME OVER! Вас відкинуто в Кімнату ${Math.max(1, currentRoom - 1)}.`);
                     currentRoom = Math.max(1, currentRoom - 1);
@@ -498,11 +500,19 @@
             }
         }
 
-        function buyInsurance() {
-            if (currentRoom === 13 || hasInsurance) return;
+        // Клік по кнопці страховки: якщо страховки ще немає — купуємо,
+        // якщо вона вже куплена — гравець сам активує її вручну
+        function handleInsuranceClick() {
+            if (currentRoom === 13) return;
+
+            if (hasInsurance) {
+                useInsurance('manual');
+                return;
+            }
 
             if (userBalance < currentInsuranceCost) {
-                alert(`Недостатньо $ROOM для купівлі страховки за $${currentInsuranceCost.toFixed(2)}!`);
+                alert(`Недостатньо $ROOM для купівлі страховки за $${currentInsuranceCost.toFixed(2)}!\n\n💳 Поповніть баланс, щоб продовжити гру.`);
+                openTopUpModal();
                 return;
             }
 
@@ -511,9 +521,30 @@
             hasInsurance = true;
             updateWalletUI();
 
-            if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-            alert(`🛡️ Страховку успішно придбано!`);
+            if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+            alert(`🛡️ Страховку успішно придбано!\n\nВона спрацює автоматично, якщо ви влучите в пастку. Або натисніть цю кнопку ще раз у будь-який момент, щоб активувати її самостійно — це поверне 50% витрачених у цій кімнаті ключів і почне спробу заново.`);
             updateActionPanel();
+        }
+
+        // Спрацювання страховки: або автоматично при пастці ('trap'),
+        // або вручну за бажанням гравця ('manual'). Повертає 50% витрат
+        // на ключі в поточній кімнаті та перезапускає спробу кімнати.
+        function useInsurance(reason) {
+            const refund = roomKeysSpent * 0.5;
+            userBalance += refund;
+            totalSpent -= refund;
+            hasInsurance = false;
+
+            if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+
+            if (reason === 'trap') {
+                alert(`💥 ПАСТКА!\n\n🛡️ Страховка спрацювала! Вам повернуто 50% витрат на ключі (${refund.toFixed(2)} $ROOM).\nКімната перезапускається!`);
+            } else {
+                alert(`🛡️ Страховку активовано вручну!\n\nВам повернуто 50% витрачених у цій кімнаті ключів (${refund.toFixed(2)} $ROOM).\nСпроба в кімнаті починається заново!`);
+            }
+
+            resetRoomState(false);
+            renderRoom();
         }
 
         function resetRoomState(passedRoom = true) {
@@ -546,7 +577,7 @@
         function quickAddFunds() {
             userBalance += defaultTopUpAmount;
             updateWalletUI();
-            if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+            if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
         }
 
         function addFunds(amount) {
