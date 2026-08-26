@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Hotel 13 Game</title>
+    <title>Hotel 13</title>
     
     <!-- Telegram WebApp SDK -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     
-    <!-- Canvas-Confetti (для салюту при виграші) -->
+    <!-- Canvas Confetti -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 
     <style>
@@ -17,32 +17,29 @@
             margin: 0;
             padding: 0;
             user-select: none;
-            -webkit-user-select: none;
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--tg-theme-bg-color, #1a1a1a);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--tg-theme-bg-color, #121212);
             color: var(--tg-theme-text-color, #ffffff);
             display: flex;
             flex-direction: column;
             align-items: center;
+            padding: 12px;
             min-height: 100vh;
-            padding: 15px;
-            overflow-x: hidden;
         }
 
-        /* Шапка гри: Баланс та інфо */
         .header {
             width: 100%;
             max-width: 400px;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            background: rgba(255, 255, 255, 0.05);
             padding: 10px 15px;
-            background: rgba(255, 255, 255, 0.08);
             border-radius: 12px;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
         }
 
         .balance-box {
@@ -52,45 +49,40 @@
         }
 
         .info-btn {
-            background: #007aff;
+            background: #333;
             color: #fff;
-            border: none;
+            border: 1px solid #555;
             border-radius: 50%;
-            width: 32px;
-            height: 32px;
-            font-size: 16px;
-            font-weight: bold;
+            width: 30px;
+            height: 30px;
             cursor: pointer;
         }
 
-        /* Ігрове поле */
-        .game-container {
+        .game-grid {
             width: 100%;
             max-width: 400px;
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 15px;
-            margin-bottom: 20px;
+            gap: 12px;
+            margin-bottom: 15px;
         }
 
-        .door-card {
-            height: 120px;
-            background: #2c2c2e;
-            border: 2px solid #3a3a3c;
-            border-radius: 12px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 32px;
+        .door-btn {
+            height: 100px;
+            background: #222;
+            border: 2px solid #444;
+            border-radius: 10px;
+            color: #fff;
+            font-size: 24px;
+            font-weight: bold;
             cursor: pointer;
-            transition: transform 0.1s, border-color 0.2s;
+            transition: transform 0.1s;
         }
 
-        .door-card:active {
-            transform: scale(0.95);
+        .door-btn:active {
+            transform: scale(0.96);
         }
 
-        /* Панель управління та Страховка */
         .controls {
             width: 100%;
             max-width: 400px;
@@ -99,109 +91,99 @@
             gap: 10px;
         }
 
-        .btn {
+        .action-btn {
             width: 100%;
-            padding: 14px;
-            font-size: 16px;
-            font-weight: 600;
+            padding: 12px;
+            font-size: 15px;
+            font-weight: bold;
+            border-radius: 8px;
             border: none;
-            border-radius: 10px;
             cursor: pointer;
-            transition: opacity 0.2s, background-color 0.2s;
         }
 
-        .btn-insurance {
-            background-color: #ff9500;
-            color: #ffffff;
+        .insurance-btn {
+            background: #ff9500;
+            color: #fff;
         }
 
-        .btn-insurance:disabled {
-            background-color: #3a3a3c;
-            color: #8e8e93;
+        .insurance-btn:disabled {
+            background: #444;
+            color: #777;
             cursor: not-allowed;
         }
 
-        .btn-insurance.active-shield {
-            background-color: #34c759;
-            box-shadow: 0 0 10px rgba(52, 199, 89, 0.5);
+        .insurance-btn.active {
+            background: #34c759;
+            box-shadow: 0 0 10px rgba(52, 199, 89, 0.6);
         }
 
-        /* Анімація вибуху при пастці */
-        @keyframes shakeAndFlash {
-            0% { transform: translate(0, 0); background-color: rgba(255, 59, 48, 0.4); }
-            20% { transform: translate(-10px, 5px); }
-            40% { transform: translate(10px, -5px); }
-            60% { transform: translate(-8px, -2px); }
-            80% { transform: translate(8px, 2px); }
+        @keyframes shake {
+            0% { transform: translate(0, 0); background-color: rgba(255, 0, 0, 0.3); }
+            25% { transform: translate(-8px, 4px); }
+            50% { transform: translate(8px, -4px); }
+            75% { transform: translate(-5px, 2px); }
             100% { transform: translate(0, 0); background-color: transparent; }
         }
 
-        .shake-explosion {
-            animation: shakeAndFlash 0.5s ease-in-out;
+        .shake-effect {
+            animation: shake 0.4s ease-in-out;
         }
 
-        /* Модальне вікно інструкції */
         .modal {
             display: none;
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(0,0,0,0.8);
             justify-content: center;
             align-items: center;
-            z-index: 100;
+            z-index: 1000;
         }
 
-        .modal-content {
-            background: #2c2c2e;
+        .modal-body {
+            background: #222;
             padding: 20px;
-            border-radius: 14px;
+            border-radius: 12px;
             max-width: 320px;
-            width: 90%;
             color: #fff;
         }
 
-        .modal-content h3 { margin-bottom: 10px; color: #ff9500; }
-        .modal-content ul { margin-left: 20px; margin-bottom: 15px; font-size: 14px; line-height: 1.4; }
-        .close-btn { background: #007aff; color: white; width: 100%; }
+        .modal-body h3 { margin-bottom: 10px; color: #ff9500; }
+        .modal-body p { font-size: 14px; line-height: 1.4; margin-bottom: 10px; }
+        .close-modal { background: #007aff; color: #fff; width: 100%; padding: 8px; border: none; border-radius: 6px; }
     </style>
 </head>
 <body>
 
-    <!-- Шапка -->
     <div class="header">
-        <div class="balance-box">Баланс: <span id="balance">0</span> ₴</div>
-        <button class="info-btn" id="open-info">ℹ️</button>
+        <div class="balance-box">Баланс: <span id="balance">500</span> ₴</div>
+        <button class="info-btn" onclick="toggleModal(true)">ℹ️</button>
     </div>
 
-    <!-- Двері / Осередки -->
-    <div class="game-container">
-        <div class="door-card" onclick="handleDoorClick(0)">🚪 1</div>
-        <div class="door-card" onclick="handleDoorClick(1)">🚪 2</div>
-        <div class="door-card" onclick="handleDoorClick(2)">🚪 3</div>
-        <div class="door-card" onclick="handleDoorClick(3)">🚪 4</div>
+    <div class="game-grid">
+        <button class="door-btn" onclick="selectDoor(1)">🚪 1</button>
+        <button class="door-btn" onclick="selectDoor(2)">🚪 2</button>
+        <button class="door-btn" onclick="selectDoor(3)">🚪 3</button>
+        <button class="door-btn" onclick="selectDoor(4)">🚪 4</button>
     </div>
 
-    <!-- Кнопка ручного використання страховки -->
     <div class="controls">
-        <button id="insurance-btn" class="btn btn-insurance" disabled>Придбати страховку (50 ₴)</button>
+        <button id="insurance-btn" class="action-btn insurance-btn" onclick="handleInsuranceClick()">
+            Придбати страховку (50 ₴)
+        </button>
     </div>
 
-    <!-- Модальне вікно про гру -->
     <div class="modal" id="info-modal">
-        <div class="modal-content">
-            <h3>🎮 Про гру Hotel 13</h3>
-            <ul>
-                <li><b>Мета:</b> Обирайте двері та знаходьте грошові призи.</li>
-                <li><b>Пастки:</b> За одними з дверей ховається вибух, який забирає виграш.</li>
-                <li><b>Страховка:</b> Ви можете придбати її та вручну активувати як щит від наступного вибуху!</li>
-                <li><b>Виграш:</b> Зараховується на ваш баланс миттєво.</li>
-            </ul>
-            <button class="btn close-btn" id="close-info">Зрозуміло</button>
+        <div class="modal-body">
+            <h3>🎮 Правила гри Hotel 13</h3>
+            <p><b>Обирайте двері:</b> За трьома дверима схований виграш, за однією — пастка.</p>
+            <p><b>Страховка:</b> Купуйте страховку та натискайте кнопкою вручну, щоб захистити баланс від наступного вибуху.</p>
+            <p><b>Зарахування:</b> Усі виграші автоматично додаються до вашого рахунку.</p>
+            <button class="close-modal" onclick="toggleModal(false)">Зрозуміло</button>
         </div>
     </div>
 
     <script>
-        // 1. ІНІЦІАЛІЗАЦІЯ TELEGRAM WEBAPP SDK
+        // 1. Ініціалізація Telegram WebApp
         const tg = window.Telegram?.WebApp;
         if (tg) {
             tg.ready();
@@ -209,49 +191,46 @@
         }
 
         // Стан гри
-        let playerBalance = 500; // Початковий баланс
-        let hasInsurance = false; // Чи придбана страховка
-        let isInsuranceActive = false; // Чи активована страховка гравцем вручну
+        let balance = 500;
+        let hasInsurance = false;       // Придбано
+        let insuranceActive = false;   // Активовано вручну
 
         const balanceEl = document.getElementById('balance');
         const insuranceBtn = document.getElementById('insurance-btn');
 
         function updateUI() {
-            balanceEl.innerText = playerBalance;
+            balanceEl.innerText = balance;
 
-            // Логіка стану кнопки страховки
-            if (isInsuranceActive) {
+            if (insuranceActive) {
                 insuranceBtn.disabled = true;
-                insuranceBtn.className = "btn btn-insurance active-shield";
+                insuranceBtn.className = "action-btn insurance-btn active";
                 insuranceBtn.innerText = "Захист активовано 🛡️";
             } else if (hasInsurance) {
                 insuranceBtn.disabled = false;
-                insuranceBtn.className = "btn btn-insurance";
+                insuranceBtn.className = "action-btn insurance-btn";
                 insuranceBtn.innerText = "Активувати страховку 🛡️";
             } else {
-                insuranceBtn.disabled = playerBalance < 50;
-                insuranceBtn.className = "btn btn-insurance";
+                insuranceBtn.disabled = balance < 50;
+                insuranceBtn.className = "action-btn insurance-btn";
                 insuranceBtn.innerText = "Придбати страховку (50 ₴)";
             }
         }
 
-        // 2. РУЧНЕ ВИКОРИСТАННЯ ТА КУПІВЛЯ СТРАХОВКИ
-        insuranceBtn.addEventListener('click', () => {
-            if (!hasInsurance && playerBalance >= 50) {
-                // Купівля
-                playerBalance -= 50;
+        // 2. Ручне управління страховкою
+        function handleInsuranceClick() {
+            if (!hasInsurance && balance >= 50) {
+                balance -= 50;
                 hasInsurance = true;
                 updateUI();
-            } else if (hasInsurance && !isInsuranceActive) {
-                // Ручна активація
-                isInsuranceActive = true;
+            } else if (hasInsurance && !insuranceActive) {
+                insuranceActive = true;
                 hasInsurance = false;
                 if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
                 updateUI();
             }
-        });
+        }
 
-        // 3. ЗВУКОВІ ЕФЕКТИ (Web Audio API)
+        // 3. Звуковий синтезатор
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         function playSound(type) {
             if (audioCtx.state === 'suspended') audioCtx.resume();
@@ -262,70 +241,59 @@
 
             if (type === 'win') {
                 osc.type = 'triangle';
-                osc.frequency.setValueAtTime(440, audioCtx.currentTime);
+                osc.frequency.setValueAtTime(523.25, audioCtx.currentTime); // C5
                 osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.3);
-                gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
-                osc.start();
-                osc.stop(audioCtx.currentTime + 0.5);
-            } else if (type === 'explosion') {
-                osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(150, audioCtx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(30, audioCtx.currentTime + 0.4);
-                gain.gain.setValueAtTime(0.5, audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
                 gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
                 osc.start();
                 osc.stop(audioCtx.currentTime + 0.4);
+            } else if (type === 'trap') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(120, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(30, audioCtx.currentTime + 0.3);
+                gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.3);
             }
         }
 
-        // 4. ВАУ-ЕФЕКТИ (Салют та Вибух)
-        function triggerWinEffect(amount) {
-            confetti({ particleCount: 70, spread: 60, origin: { y: 0.6 } });
-            playSound('win');
-            if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-            
-            // Зарахування грошей
-            playerBalance += amount;
-            updateUI();
-        }
+        // 4. Логіка вибору дверей та подій
+        function selectDoor(doorNum) {
+            const isTrap = Math.random() < 0.3; // 30% пастка
 
-        function triggerExplosionEffect() {
-            if (isInsuranceActive) {
-                // Страховка врятувала!
-                isInsuranceActive = false;
-                alert("🛡️ Страховка врятувала ваш баланс від пастки!");
-                updateUI();
-                return;
-            }
-
-            document.body.classList.add('shake-explosion');
-            setTimeout(() => document.body.classList.remove('shake-explosion'), 500);
-            
-            playSound('explosion');
-            if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
-            
-            playerBalance = Math.max(0, playerBalance - 100);
-            updateUI();
-        }
-
-        // Клік по дверях
-        function handleDoorClick(doorIndex) {
-            const isTrap = Math.random() < 0.3; // 30% шанс пастки
             if (isTrap) {
-                triggerExplosionEffect();
+                if (insuranceActive) {
+                    insuranceActive = false;
+                    alert("🛡️ Страховка врятувала вас від пастки!");
+                    updateUI();
+                    return;
+                }
+
+                // Ефект вибуху
+                document.body.classList.add('shake-effect');
+                setTimeout(() => document.body.classList.remove('shake-effect'), 400);
+                playSound('trap');
+                if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
+
+                balance = Math.max(0, balance - 100);
             } else {
-                const prize = Math.floor(Math.random() * 100) + 20; // Виграш від 20 до 120
-                triggerWinEffect(prize);
+                // Ефект виграшу
+                confetti({ particleCount: 50, spread: 50, origin: { y: 0.7 } });
+                playSound('win');
+                if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+
+                const winAmount = Math.floor(Math.random() * 80) + 30;
+                balance += winAmount;
             }
+
+            updateUI();
         }
 
-        // Модальне вікно інструкцій
-        const modal = document.getElementById('info-modal');
-        document.getElementById('open-info').onclick = () => modal.style.display = 'flex';
-        document.getElementById('close-info').onclick = () => modal.style.display = 'none';
+        function toggleModal(show) {
+            document.getElementById('info-modal').style.display = show ? 'flex' : 'none';
+        }
 
-        // Старт
         updateUI();
     </script>
 </body>
