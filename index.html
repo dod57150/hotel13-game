@@ -602,14 +602,29 @@
         }
 
         function takePrize() {
-            alert("Ви забрали приз! Гра завершена.");
+            // 1. Отримуємо рядок призу для поточної кімнати (наприклад, "$1,000")
+            const prizeText = roomPrizes[currentRoom] || "0";
+            
+            // 2. Видаляємо всі нечислові символи і перетворюємо в число (отримаємо 1000)
+            const prizeAmount = parseInt(prizeText.replace(/\D/g, ''), 10);
+
+            // 3. Зараховуємо на баланс, якщо приз існує
+            if (prizeAmount > 0) {
+                userBalance += prizeAmount;
+                updateWalletUI(); // Оновлюємо інтерфейс балансу
+                alert(`💰 Ви успішно забрали приз: ${prizeAmount} $ROOM!\nГроші зараховано на ваш баланс. Гра починається з початку.`);
+            } else {
+                alert("Ви вийшли з гри.");
+            }
+
+            // 4. Скидаємо стан гри до першої кімнати
             document.getElementById('prize-modal').style.display = 'none';
             currentRoom = 1;
             accumulatedTraps = 0;
             resetRoomState(true);
             renderRoom();
         }
-
+       
         function continueGame() {
             document.getElementById('prize-modal').style.display = 'none';
             currentRoom++;
