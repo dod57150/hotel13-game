@@ -2,551 +2,331 @@
 <html lang="uk">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Hotel 13 - Web3 Game V11</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Hotel 13 Game</title>
     
-    <!-- Консоль відлагодження для смартфона -->
-    <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
-    <script>eruda.init();</script>
-
-    <!-- Telegram SDK -->
+    <!-- Telegram WebApp SDK -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    
+    <!-- Canvas-Confetti (для салюту при виграші) -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 
     <style>
-        :root {
-            --bg-color: #0b0e14;
-            --card-bg: #151a23;
-            --accent-color: #00f2fe;
-            --accent-gold: #ffb703;
-            --danger-color: #ff4757;
-            --text-color: #ffffff;
-            --text-dim: #8a99ad;
-        }
-
         * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             user-select: none;
-        }
-
-        html, body {
-            width: 100%;
-            height: 100%;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            overflow-x: hidden;
+            -webkit-user-select: none;
         }
 
         body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--tg-theme-bg-color, #1a1a1a);
+            color: var(--tg-theme-text-color, #ffffff);
             display: flex;
             flex-direction: column;
-            justify-content: space-between;
-            padding: 12px;
-            transition: background 0.4s ease;
+            align-items: center;
+            min-height: 100vh;
+            padding: 15px;
+            overflow-x: hidden;
         }
 
-        header {
-            background: rgba(21, 26, 35, 0.95);
-            backdrop-filter: blur(8px);
-            border-radius: 16px;
-            padding: 10px 14px;
+        /* Шапка гри: Баланс та інфо */
+        .header {
+            width: 100%;
+            max-width: 400px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 10px 15px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            margin-bottom: 20px;
         }
 
-        .user-info { display: flex; flex-direction: column; gap: 2px; }
-        .user-name { font-weight: 700; font-size: 14px; }
-        .user-spent { font-size: 11px; color: var(--text-dim); }
-        .wallet-box { display: flex; align-items: center; gap: 6px; }
-
-        .balance {
-            background: rgba(0, 242, 254, 0.1);
-            color: var(--accent-color);
-            padding: 5px 10px;
-            border-radius: 20px;
-            font-size: 13px;
+        .balance-box {
+            font-size: 18px;
             font-weight: bold;
-            border: 1px solid rgba(0, 242, 254, 0.3);
+            color: #4cd964;
         }
 
-        .btn-topup-fast {
-            background: #2ed573;
-            color: #000;
-            border: none;
-            padding: 6px 10px;
-            border-radius: 10px;
-            font-weight: bold;
-            font-size: 12px;
-            cursor: pointer;
-        }
-
-        .btn-topup-settings {
-            background: rgba(255, 255, 255, 0.1);
+        .info-btn {
+            background: #007aff;
             color: #fff;
             border: none;
-            padding: 6px;
-            border-radius: 10px;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            font-size: 16px;
+            font-weight: bold;
             cursor: pointer;
         }
 
-        .room-header {
-            text-align: center;
-            margin: 6px 0;
-            background: rgba(0, 0, 0, 0.6);
-            padding: 8px;
-            border-radius: 12px;
-        }
-
-        .sponsor-badge {
-            font-size: 10px;
-            color: var(--accent-color);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            font-weight: bold;
-        }
-
-        .room-title { font-size: 18px; font-weight: 800; color: var(--accent-gold); }
-        .room-subtitle { font-size: 11px; color: var(--danger-color); font-weight: 600; }
-
-        .prize-banner {
-            background: linear-gradient(135deg, rgba(255, 183, 3, 0.2), rgba(255, 119, 0, 0.2));
-            border: 1px solid var(--accent-gold);
-            color: var(--accent-gold);
-            padding: 6px;
-            border-radius: 8px;
-            text-align: center;
-            font-size: 12px;
-            font-weight: bold;
-            margin-top: 4px;
-        }
-
-        .doors-grid {
+        /* Ігрове поле */
+        .game-container {
+            width: 100%;
+            max-width: 400px;
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(65px, 1fr));
-            gap: 8px;
-            margin: 8px 0;
-            flex-grow: 1;
-            overflow-y: auto;
-            max-height: 50vh;
-            padding: 2px;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
         }
 
         .door-card {
-            background: rgba(21, 26, 35, 0.9);
-            border: 2px solid rgba(255, 255, 255, 0.2);
+            height: 120px;
+            background: #2c2c2e;
+            border: 2px solid #3a3a3c;
             border-radius: 12px;
-            height: 80px;
             display: flex;
-            flex-direction: column;
             justify-content: center;
             align-items: center;
+            font-size: 32px;
             cursor: pointer;
+            transition: transform 0.1s, border-color 0.2s;
         }
 
-        .door-card.wrong {
-            background: rgba(255, 255, 255, 0.05) !important;
-            border-color: var(--text-dim) !important;
-            opacity: 0.3;
+        .door-card:active {
+            transform: scale(0.95);
         }
 
-        .door-card.trap {
-            background: rgba(255, 71, 87, 0.4) !important;
-            border-color: var(--danger-color) !important;
-        }
-
-        .door-icon { font-size: 24px; }
-        .door-number { font-size: 10px; color: #fff; font-weight: 700; background: rgba(0,0,0,0.6); padding: 2px 5px; border-radius: 6px; }
-
-        .actions-panel {
-            background: rgba(21, 26, 35, 0.95);
-            border-radius: 14px;
-            padding: 10px;
+        /* Панель управління та Страховка */
+        .controls {
+            width: 100%;
+            max-width: 400px;
             display: flex;
             flex-direction: column;
-            gap: 6px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            gap: 10px;
         }
-
-        .price-info { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-dim); }
 
         .btn {
             width: 100%;
-            padding: 10px;
+            padding: 14px;
+            font-size: 16px;
+            font-weight: 600;
             border: none;
             border-radius: 10px;
-            font-weight: 700;
-            font-size: 13px;
             cursor: pointer;
+            transition: opacity 0.2s, background-color 0.2s;
         }
 
-        .btn-insurance-buy {
-            background: rgba(255, 183, 3, 0.15);
-            color: var(--accent-gold);
-            border: 1px solid var(--accent-gold);
+        .btn-insurance {
+            background-color: #ff9500;
+            color: #ffffff;
         }
 
-        .btn-insurance-buy:disabled { opacity: 0.4; }
+        .btn-insurance:disabled {
+            background-color: #3a3a3c;
+            color: #8e8e93;
+            cursor: not-allowed;
+        }
 
-        .modal-overlay {
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0, 0, 0, 0.85);
+        .btn-insurance.active-shield {
+            background-color: #34c759;
+            box-shadow: 0 0 10px rgba(52, 199, 89, 0.5);
+        }
+
+        /* Анімація вибуху при пастці */
+        @keyframes shakeAndFlash {
+            0% { transform: translate(0, 0); background-color: rgba(255, 59, 48, 0.4); }
+            20% { transform: translate(-10px, 5px); }
+            40% { transform: translate(10px, -5px); }
+            60% { transform: translate(-8px, -2px); }
+            80% { transform: translate(8px, 2px); }
+            100% { transform: translate(0, 0); background-color: transparent; }
+        }
+
+        .shake-explosion {
+            animation: shakeAndFlash 0.5s ease-in-out;
+        }
+
+        /* Модальне вікно інструкції */
+        .modal {
             display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.7);
             justify-content: center;
             align-items: center;
-            padding: 20px;
             z-index: 100;
         }
 
-        .modal-card {
-            background: var(--card-bg);
-            border-radius: 16px;
+        .modal-content {
+            background: #2c2c2e;
             padding: 20px;
-            width: 100%;
+            border-radius: 14px;
             max-width: 320px;
-            text-align: center;
-            border: 1px solid var(--accent-gold);
+            width: 90%;
+            color: #fff;
         }
 
-        .modal-title { font-size: 20px; color: var(--accent-gold); margin-bottom: 6px; }
-        .modal-desc { font-size: 13px; color: var(--text-dim); margin-bottom: 16px; }
-        .modal-btns { display: flex; flex-direction: column; gap: 8px; }
-        .btn-take { background: #2ed573; color: #000; }
-        .btn-risk { background: transparent; color: #fff; border: 1px solid rgba(255, 255, 255, 0.3); }
-
-        .topup-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0; }
-        .topup-btn { padding: 10px; background: rgba(0, 242, 254, 0.1); border: 1px solid var(--accent-color); color: var(--accent-color); border-radius: 8px; font-weight: bold; }
+        .modal-content h3 { margin-bottom: 10px; color: #ff9500; }
+        .modal-content ul { margin-left: 20px; margin-bottom: 15px; font-size: 14px; line-height: 1.4; }
+        .close-btn { background: #007aff; color: white; width: 100%; }
     </style>
 </head>
 <body>
 
-    <header>
-        <div class="user-info">
-            <span class="user-name" id="username">Гравець</span>
-            <span class="user-spent">Витрачено: <b id="total-spent" style="color:#ff4757;">0 $ROOM</b></span>
-        </div>
-        <div class="wallet-box">
-            <div class="balance" id="user-balance">100 $ROOM</div>
-            <button class="btn-topup-fast" onclick="quickAddFunds()">+<span id="fast-amount">100</span></button>
-            <button class="btn-topup-settings" onclick="openTopUpModal()">⚙️</button>
-        </div>
-    </header>
-
-    <div class="room-header">
-        <div class="sponsor-badge" id="sponsor-name">Спонсор: General Hotel</div>
-        <div class="room-title" id="room-name">КІМНАТА 1</div>
-        <div class="room-subtitle" id="room-doors-count">Склад кімнати</div>
-        <div class="prize-banner" id="prize-next-banner" style="display: none;"></div>
+    <!-- Шапка -->
+    <div class="header">
+        <div class="balance-box">Баланс: <span id="balance">0</span> ₴</div>
+        <button class="info-btn" id="open-info">ℹ️</button>
     </div>
 
-    <div class="doors-grid" id="doors-container"></div>
-
-    <div class="actions-panel">
-        <div class="price-info">
-            <span>Ціна ключа: <strong id="key-price" style="color:#00f2fe;">БЕЗКОШТОВНО</strong></span>
-            <span>Страховка: <strong id="insurance-price" style="color:#ffb703;">$4.99</strong></span>
-        </div>
-        
-        <button class="btn btn-insurance-buy" id="buy-insurance-btn" onclick="buyInsurance()">
-            🛡️ Купити страховку ($4.99)
-        </button>
+    <!-- Двері / Осередки -->
+    <div class="game-container">
+        <div class="door-card" onclick="handleDoorClick(0)">🚪 1</div>
+        <div class="door-card" onclick="handleDoorClick(1)">🚪 2</div>
+        <div class="door-card" onclick="handleDoorClick(2)">🚪 3</div>
+        <div class="door-card" onclick="handleDoorClick(3)">🚪 4</div>
     </div>
 
-    <div class="modal-overlay" id="prize-modal">
-        <div class="modal-card">
-            <div class="modal-title" id="modal-title-text">ВІТАЄМО! 🎉</div>
-            <div class="modal-desc" id="modal-desc-text">Ви пройшли контрольний рівень!</div>
-            <div class="modal-btns">
-                <button class="btn btn-take" onclick="takePrize()">💰 Забрати приз і вийти</button>
-                <button class="btn btn-risk" id="btn-continue-game" onclick="continueGame()">🚀 Ризикнути й грати далі</button>
-            </div>
-        </div>
+    <!-- Кнопка ручного використання страховки -->
+    <div class="controls">
+        <button id="insurance-btn" class="btn btn-insurance" disabled>Придбати страховку (50 ₴)</button>
     </div>
 
-    <div class="modal-overlay" id="topup-modal">
-        <div class="modal-card">
-            <div class="modal-title">💳 Поповнення гаманця</div>
-            <div class="topup-grid">
-                <button class="topup-btn" onclick="addFunds(50)">+50 $ROOM</button>
-                <button class="topup-btn" onclick="addFunds(100)">+100 $ROOM</button>
-                <button class="topup-btn" onclick="addFunds(500)">+500 $ROOM</button>
-                <button class="topup-btn" onclick="addFunds(1000)">+1000 $ROOM</button>
-            </div>
-            <button class="btn" style="background:#555; color:#fff;" onclick="closeTopUpModal()">Закрити</button>
+    <!-- Модальне вікно про гру -->
+    <div class="modal" id="info-modal">
+        <div class="modal-content">
+            <h3>🎮 Про гру Hotel 13</h3>
+            <ul>
+                <li><b>Мета:</b> Обирайте двері та знаходьте грошові призи.</li>
+                <li><b>Пастки:</b> За одними з дверей ховається вибух, який забирає виграш.</li>
+                <li><b>Страховка:</b> Ви можете придбати її та вручну активувати як щит від наступного вибуху!</li>
+                <li><b>Виграш:</b> Зараховується на ваш баланс миттєво.</li>
+            </ul>
+            <button class="btn close-btn" id="close-info">Зрозуміло</button>
         </div>
     </div>
 
     <script>
-        // Ініціалізація Telegram WebApp
-        const tg = window.Telegram.WebApp;
-        tg.expand();
-        tg.ready(); // 🟢 Обов'язковий сигнал для мобільних пристроїв
-
-        const roomThemes = {
-            1: { sponsor: "Crypto Exchange X", bg: "linear-gradient(135deg, #0f2027, #203a43, #2c5364)", doorBg: "#151a23", doorIcon: "🚪" },
-            2: { sponsor: "Binance Partner", bg: "linear-gradient(135deg, #1e130c, #4a2f00)", doorBg: "#2a1e0a", doorIcon: "🨴" },
-            3: { sponsor: "RedBull Energy", bg: "linear-gradient(135deg, #200112, #4da0b0)", doorBg: "#182026", doorIcon: "⚡" },
-            default: { sponsor: "VIP Casino Club", bg: "linear-gradient(135deg, #0b0e14, #1a2332)", doorBg: "#151a23", doorIcon: "🚪" }
-        };
-
-        const roomBaseKeyPrices = {
-            1: 1, 2: 1, 3: 1, 4: 1, 5: 1,
-            6: 5, 7: 5,
-            8: 25, 9: 25,
-            10: 100, 11: 100,
-            12: 500, 13: 500
-        };
-
-        const roomPrizes = {
-            6: "$100", 8: "$1,000", 10: "$10,000", 12: "$100,000", 13: "$1,000,000"
-        };
-
-        let currentRoom = 1;
-        let doorsCount = 2;
-        let keyPrice = 0;
-        let userBalance = 100;
-        let totalSpent = 0;
-        let roomKeysSpent = 0;
-        let defaultTopUpAmount = 100;
-
-        let accumulatedTraps = 0;
-        let activeTrapsCount = 1;
-        let currentInsuranceCost = 4.99;
-        let hasInsurance = false;
-        let winningDoor = 1;
-        let trapDoors = [];
-        let wrongAttemptsInRoom = 0;
-
-        if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
-            document.getElementById('username').innerText = tg.initDataUnsafe.user.first_name;
+        // 1. ІНІЦІАЛІЗАЦІЯ TELEGRAM WEBAPP SDK
+        const tg = window.Telegram?.WebApp;
+        if (tg) {
+            tg.ready();
+            tg.expand();
         }
 
-        function calculateKeyPrice() {
-            if (wrongAttemptsInRoom === 0) return 0;
-            const base = roomBaseKeyPrices[currentRoom] || 1;
-            return base * Math.pow(2, wrongAttemptsInRoom - 1);
-        }
+        // Стан гри
+        let playerBalance = 500; // Початковий баланс
+        let hasInsurance = false; // Чи придбана страховка
+        let isInsuranceActive = false; // Чи активована страховка гравцем вручну
 
-        function calculateInsuranceCost() {
-            const baseKey = roomBaseKeyPrices[currentRoom] || 1;
-            return (baseKey * 5) * Math.pow(1.8, wrongAttemptsInRoom);
-        }
+        const balanceEl = document.getElementById('balance');
+        const insuranceBtn = document.getElementById('insurance-btn');
 
-        function renderRoom() {
-            doorsCount = currentRoom * 2;
-            const theme = roomThemes[currentRoom] || roomThemes.default;
+        function updateUI() {
+            balanceEl.innerText = playerBalance;
 
-            document.body.style.background = theme.bg;
-            document.getElementById('sponsor-name').innerText = `Спонсор: ${theme.sponsor}`;
-            document.getElementById('room-name').innerText = `КІМНАТА ${currentRoom}`;
-            
-            const emptyDoorsCount = doorsCount - 1 - activeTrapsCount;
-            document.getElementById('room-doors-count').innerText = 
-                `Склад: 1 Виграш | ${activeTrapsCount} ☠️ Пасток | ${emptyDoorsCount} Порожніх`;
-
-            const banner = document.getElementById('prize-next-banner');
-            if (roomPrizes[currentRoom]) {
-                banner.style.display = 'block';
-                banner.innerText = `🎁 Приз: ${roomPrizes[currentRoom]}`;
-            } else {
-                banner.style.display = 'none';
-            }
-
-            updateActionPanel();
-            updateWalletUI();
-
-            const container = document.getElementById('doors-container');
-            container.innerHTML = '';
-
-            for (let i = 1; i <= doorsCount; i++) {
-                const door = document.createElement('div');
-                door.className = 'door-card';
-                door.id = `door-${i}`;
-                door.style.backgroundColor = theme.doorBg;
-
-                door.innerHTML = `
-                    <div class="door-icon" id="icon-${i}">${theme.doorIcon}</div>
-                    <div class="door-number">№ ${i}</div>
-                `;
-                door.onclick = () => selectDoor(i);
-                container.appendChild(door);
-            }
-        }
-
-        function updateActionPanel() {
-            keyPrice = calculateKeyPrice();
-            
-            const keyPriceText = keyPrice === 0 ? "БЕЗКОШТОВНО" : `${keyPrice} $ROOM`;
-            document.getElementById('key-price').innerText = keyPriceText;
-
-            currentInsuranceCost = calculateInsuranceCost();
-            document.getElementById('insurance-price').innerText = `$${currentInsuranceCost.toFixed(2)}`;
-
-            const buyBtn = document.getElementById('buy-insurance-btn');
-
-            if (currentRoom === 13) {
-                buyBtn.innerText = "❌ Страховка заборонена в 13 кімнаті";
-                buyBtn.disabled = true;
+            // Логіка стану кнопки страховки
+            if (isInsuranceActive) {
+                insuranceBtn.disabled = true;
+                insuranceBtn.className = "btn btn-insurance active-shield";
+                insuranceBtn.innerText = "Захист активовано 🛡️";
             } else if (hasInsurance) {
-                buyBtn.innerText = "🛡️ Страховка АКТИВНА";
-                buyBtn.disabled = true;
+                insuranceBtn.disabled = false;
+                insuranceBtn.className = "btn btn-insurance";
+                insuranceBtn.innerText = "Активувати страховку 🛡️";
             } else {
-                buyBtn.innerText = `🛡️ Купити страховку ($${currentInsuranceCost.toFixed(2)})`;
-                buyBtn.disabled = false;
+                insuranceBtn.disabled = playerBalance < 50;
+                insuranceBtn.className = "btn btn-insurance";
+                insuranceBtn.innerText = "Придбати страховку (50 ₴)";
             }
         }
 
-        function updateWalletUI() {
-            document.getElementById('user-balance').innerText = `${userBalance.toFixed(2)} $ROOM`;
-            document.getElementById('total-spent').innerText = `${totalSpent.toFixed(2)} $ROOM`;
-            document.getElementById('fast-amount').innerText = defaultTopUpAmount;
-        }
-
-        function selectDoor(selected) {
-            const doorElem = document.getElementById(`door-${selected}`);
-            if (doorElem.classList.contains('wrong') || doorElem.classList.contains('trap')) return;
-
-            if (userBalance < keyPrice) {
-                alert(`Недостатньо $ROOM! Потрібно ${keyPrice} $ROOM.`);
-                return;
-            }
-
-            userBalance -= keyPrice;
-            totalSpent += keyPrice;
-            roomKeysSpent += keyPrice;
-            updateWalletUI();
-
-            if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
-
-            if (selected === winningDoor) {
-                if (currentRoom === 13) {
-                    showFinalVictoryModal();
-                } else if ([6, 8, 10, 12].includes(currentRoom)) {
-                    showPrizeModal();
-                } else {
-                    currentRoom++;
-                    resetRoomState(true);
-                    renderRoom();
-                }
-            } 
-            else if (trapDoors.includes(selected)) {
-                doorElem.classList.add('trap');
-                document.getElementById(`icon-${selected}`).innerText = '☠️';
-
-                if (hasInsurance) {
-                    const refund = roomKeysSpent * 0.5;
-                    userBalance += refund;
-                    totalSpent -= refund;
-
-                    alert(`💥 ПАСТКА!\n\n🛡️ Повернено 50% (${refund.toFixed(2)} $ROOM).\nПерезапуск!`);
-                    
-                    hasInsurance = false;
-                    resetRoomState(false);
-                    renderRoom();
-                } else {
-                    alert(`💥 ПАСТКА!\n\n💀 GAME OVER! Назад у Кімнату ${Math.max(1, currentRoom - 1)}.`);
-                    currentRoom = Math.max(1, currentRoom - 1);
-                    resetRoomState(false);
-                    renderRoom();
-                }
-            } 
-            else {
-                doorElem.classList.add('wrong');
-                document.getElementById(`icon-${selected}`).innerText = '⬛';
-                wrongAttemptsInRoom++;
-                updateActionPanel();
-            }
-        }
-
-        function buyInsurance() {
-            if (currentRoom === 13 || hasInsurance) return;
-            if (userBalance < currentInsuranceCost) {
-                alert(`Недостатньо $ROOM!`);
-                return;
-            }
-            userBalance -= currentInsuranceCost;
-            totalSpent += currentInsuranceCost;
-            hasInsurance = true;
-            updateWalletUI();
-            updateActionPanel();
-        }
-
-        function resetRoomState(passedRoom = true) {
-            wrongAttemptsInRoom = 0;
-            roomKeysSpent = 0;
-
-            if (passedRoom) {
+        // 2. РУЧНЕ ВИКОРИСТАННЯ ТА КУПІВЛЯ СТРАХОВКИ
+        insuranceBtn.addEventListener('click', () => {
+            if (!hasInsurance && playerBalance >= 50) {
+                // Купівля
+                playerBalance -= 50;
+                hasInsurance = true;
+                updateUI();
+            } else if (hasInsurance && !isInsuranceActive) {
+                // Ручна активація
+                isInsuranceActive = true;
                 hasInsurance = false;
-                accumulatedTraps += 1;
+                if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+                updateUI();
+            }
+        });
+
+        // 3. ЗВУКОВІ ЕФЕКТИ (Web Audio API)
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playSound(type) {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            if (type === 'win') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(440, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.3);
+                gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.5);
+            } else if (type === 'explosion') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(30, audioCtx.currentTime + 0.4);
+                gain.gain.setValueAtTime(0.5, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.4);
+            }
+        }
+
+        // 4. ВАУ-ЕФЕКТИ (Салют та Вибух)
+        function triggerWinEffect(amount) {
+            confetti({ particleCount: 70, spread: 60, origin: { y: 0.6 } });
+            playSound('win');
+            if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+            
+            // Зарахування грошей
+            playerBalance += amount;
+            updateUI();
+        }
+
+        function triggerExplosionEffect() {
+            if (isInsuranceActive) {
+                // Страховка врятувала!
+                isInsuranceActive = false;
+                alert("🛡️ Страховка врятувала ваш баланс від пастки!");
+                updateUI();
+                return;
             }
 
-            doorsCount = currentRoom * 2;
-            const trapLimitPercentage = currentRoom <= 10 ? 0.20 : 0.30;
-            const maxAllowedTraps = Math.max(1, Math.floor(doorsCount * trapLimitPercentage));
+            document.body.classList.add('shake-explosion');
+            setTimeout(() => document.body.classList.remove('shake-explosion'), 500);
+            
+            playSound('explosion');
+            if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
+            
+            playerBalance = Math.max(0, playerBalance - 100);
+            updateUI();
+        }
 
-            activeTrapsCount = Math.min(accumulatedTraps, maxAllowedTraps);
-
-            winningDoor = Math.floor(Math.random() * doorsCount) + 1;
-            trapDoors = [];
-
-            while (trapDoors.length < activeTrapsCount) {
-                let randTrap = Math.floor(Math.random() * doorsCount) + 1;
-                if (randTrap !== winningDoor && !trapDoors.includes(randTrap)) {
-                    trapDoors.push(randTrap);
-                }
+        // Клік по дверях
+        function handleDoorClick(doorIndex) {
+            const isTrap = Math.random() < 0.3; // 30% шанс пастки
+            if (isTrap) {
+                triggerExplosionEffect();
+            } else {
+                const prize = Math.floor(Math.random() * 100) + 20; // Виграш від 20 до 120
+                triggerWinEffect(prize);
             }
         }
 
-        function quickAddFunds() {
-            userBalance += defaultTopUpAmount;
-            updateWalletUI();
-        }
+        // Модальне вікно інструкцій
+        const modal = document.getElementById('info-modal');
+        document.getElementById('open-info').onclick = () => modal.style.display = 'flex';
+        document.getElementById('close-info').onclick = () => modal.style.display = 'none';
 
-        function addFunds(amount) {
-            defaultTopUpAmount = amount;
-            userBalance += amount;
-            updateWalletUI();
-            closeTopUpModal();
-        }
-
-        function showPrizeModal() {
-            document.getElementById('modal-title-text').innerText = "ВІТАЄМО! 🎉";
-            document.getElementById('modal-desc-text').innerHTML = `Приз: <b style="color:#ffb703;">${roomPrizes[currentRoom]}</b>.`;
-            document.getElementById('btn-continue-game').style.display = 'block';
-            document.getElementById('prize-modal').style.display = 'flex';
-        }
-
-        function showFinalVictoryModal() {
-            document.getElementById('modal-title-text').innerText = "🏆 ПЕРЕМОГА! 🏆";
-            document.getElementById('modal-desc-text').innerHTML = `Джекпот: <b style="color:#ffb703;">$1,000,000</b>!`;
-            document.getElementById('btn-continue-game').style.display = 'none';
-            document.getElementById('prize-modal').style.display = 'flex';
-        }
-
-        function takePrize() {
-            document.getElementById('prize-modal').style.display = 'none';
-            currentRoom = 1;
-            accumulatedTraps = 0;
-            resetRoomState(true);
-            renderRoom();
-        }
-
-        function continueGame() {
-            document.getElementById('prize-modal').style.display = 'none';
-            currentRoom++;
-            resetRoomState(true);
-            renderRoom();
-        }
-
-        function openTopUpModal() { document.getElementById('topup-modal').style.display = 'flex'; }
-        function closeTopUpModal() { document.getElementById('topup-modal').style.display = 'none'; }
-
-        resetRoomState(false);
-        renderRoom();
+        // Старт
+        updateUI();
     </script>
 </body>
 </html>
