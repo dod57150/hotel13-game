@@ -2,21 +2,16 @@
 <html lang="uk">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hotel 13</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Hotel 13 - Web3 Game V11</title>
     
-    <!-- Підключення віртуальної консолі Eruda -->
+    <!-- Консоль відлагодження для смартфона -->
     <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
     <script>eruda.init();</script>
-    
+
+    <!-- Telegram SDK -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    ...
-</head>
-    <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Hotel 13 - Web3 Game V11</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
     <style>
         :root {
             --bg-color: #0b0e14;
@@ -36,42 +31,44 @@
             user-select: none;
         }
 
-        body {
+        html, body {
+            width: 100%;
+            height: 100%;
             background-color: var(--bg-color);
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
             color: var(--text-color);
-            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        body {
             display: flex;
             flex-direction: column;
             justify-content: space-between;
-            padding: 16px;
+            padding: 12px;
             transition: background 0.4s ease;
         }
 
         header {
-            background: rgba(21, 26, 35, 0.85);
+            background: rgba(21, 26, 35, 0.95);
             backdrop-filter: blur(8px);
             border-radius: 16px;
-            padding: 12px 16px;
+            padding: 10px 14px;
             display: flex;
             justify-content: space-between;
             align-items: center;
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
-        .user-info { display: flex; flex-direction: column; gap: 4px; }
-        .user-name { font-weight: 700; font-size: 15px; }
-        .user-spent { font-size: 12px; color: var(--text-dim); }
-        .wallet-box { display: flex; align-items: center; gap: 8px; }
+        .user-info { display: flex; flex-direction: column; gap: 2px; }
+        .user-name { font-weight: 700; font-size: 14px; }
+        .user-spent { font-size: 11px; color: var(--text-dim); }
+        .wallet-box { display: flex; align-items: center; gap: 6px; }
 
         .balance {
             background: rgba(0, 242, 254, 0.1);
             color: var(--accent-color);
-            padding: 6px 12px;
+            padding: 5px 10px;
             border-radius: 20px;
-            font-size: 14px;
+            font-size: 13px;
             font-weight: bold;
             border: 1px solid rgba(0, 242, 254, 0.3);
         }
@@ -80,10 +77,10 @@
             background: #2ed573;
             color: #000;
             border: none;
-            padding: 8px 12px;
-            border-radius: 12px;
+            padding: 6px 10px;
+            border-radius: 10px;
             font-weight: bold;
-            font-size: 13px;
+            font-size: 12px;
             cursor: pointer;
         }
 
@@ -91,109 +88,98 @@
             background: rgba(255, 255, 255, 0.1);
             color: #fff;
             border: none;
-            padding: 8px;
-            border-radius: 12px;
+            padding: 6px;
+            border-radius: 10px;
             cursor: pointer;
         }
 
         .room-header {
             text-align: center;
-            margin: 8px 0 4px;
-            background: rgba(0, 0, 0, 0.5);
-            padding: 10px;
+            margin: 6px 0;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 8px;
             border-radius: 12px;
-            backdrop-filter: blur(4px);
         }
 
         .sponsor-badge {
-            font-size: 11px;
+            font-size: 10px;
             color: var(--accent-color);
             text-transform: uppercase;
             letter-spacing: 1px;
             font-weight: bold;
         }
 
-        .room-title { font-size: 20px; font-weight: 800; color: var(--accent-gold); }
-        .room-subtitle { font-size: 12px; color: var(--danger-color); font-weight: 600; margin-top: 2px; }
+        .room-title { font-size: 18px; font-weight: 800; color: var(--accent-gold); }
+        .room-subtitle { font-size: 11px; color: var(--danger-color); font-weight: 600; }
 
         .prize-banner {
             background: linear-gradient(135deg, rgba(255, 183, 3, 0.2), rgba(255, 119, 0, 0.2));
             border: 1px solid var(--accent-gold);
             color: var(--accent-gold);
-            padding: 8px;
-            border-radius: 10px;
+            padding: 6px;
+            border-radius: 8px;
             text-align: center;
-            font-size: 13px;
+            font-size: 12px;
             font-weight: bold;
-            margin-top: 6px;
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0% { box-shadow: 0 0 0 0 rgba(255, 183, 3, 0.4); }
-            70% { box-shadow: 0 0 0 10px rgba(255, 183, 3, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(255, 183, 3, 0); }
+            margin-top: 4px;
         }
 
         .doors-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
-            gap: 10px;
-            margin: 10px 0;
-            max-height: 42vh;
+            grid-template-columns: repeat(auto-fit, minmax(65px, 1fr));
+            gap: 8px;
+            margin: 8px 0;
+            flex-grow: 1;
             overflow-y: auto;
-            padding: 4px;
+            max-height: 50vh;
+            padding: 2px;
         }
 
         .door-card {
-            background: rgba(21, 26, 35, 0.85);
+            background: rgba(21, 26, 35, 0.9);
             border: 2px solid rgba(255, 255, 255, 0.2);
             border-radius: 12px;
-            height: 90px;
+            height: 80px;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
             cursor: pointer;
-            transition: all 0.2s ease;
         }
 
         .door-card.wrong {
             background: rgba(255, 255, 255, 0.05) !important;
             border-color: var(--text-dim) !important;
-            opacity: 0.4;
-            cursor: not-allowed;
+            opacity: 0.3;
         }
 
         .door-card.trap {
             background: rgba(255, 71, 87, 0.4) !important;
             border-color: var(--danger-color) !important;
-            cursor: not-allowed;
         }
 
-        .door-icon { font-size: 26px; margin-bottom: 2px; }
-        .door-number { font-size: 11px; color: #fff; font-weight: 700; background: rgba(0,0,0,0.6); padding: 2px 6px; border-radius: 8px; }
+        .door-icon { font-size: 24px; }
+        .door-number { font-size: 10px; color: #fff; font-weight: 700; background: rgba(0,0,0,0.6); padding: 2px 5px; border-radius: 6px; }
 
         .actions-panel {
-            background: rgba(21, 26, 35, 0.85);
-            backdrop-filter: blur(8px);
-            border-radius: 16px;
-            padding: 14px;
+            background: rgba(21, 26, 35, 0.95);
+            border-radius: 14px;
+            padding: 10px;
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 6px;
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
-        .price-info { display: flex; justify-content: space-between; font-size: 13px; color: var(--text-dim); }
+        .price-info { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-dim); }
 
         .btn {
             width: 100%;
-            padding: 12px;
+            padding: 10px;
             border: none;
-            border-radius: 12px;
+            border-radius: 10px;
             font-weight: 700;
-            font-size: 14px;
+            font-size: 13px;
             cursor: pointer;
         }
 
@@ -203,7 +189,7 @@
             border: 1px solid var(--accent-gold);
         }
 
-        .btn-insurance-buy:disabled { opacity: 0.4; border-color: var(--text-dim); color: var(--text-dim); }
+        .btn-insurance-buy:disabled { opacity: 0.4; }
 
         .modal-overlay {
             position: fixed;
@@ -218,22 +204,22 @@
 
         .modal-card {
             background: var(--card-bg);
-            border-radius: 20px;
-            padding: 24px;
+            border-radius: 16px;
+            padding: 20px;
             width: 100%;
-            max-width: 340px;
+            max-width: 320px;
             text-align: center;
             border: 1px solid var(--accent-gold);
         }
 
-        .modal-title { font-size: 22px; color: var(--accent-gold); margin-bottom: 8px; }
-        .modal-desc { font-size: 14px; color: var(--text-dim); margin-bottom: 20px; }
-        .modal-btns { display: flex; flex-direction: column; gap: 10px; }
+        .modal-title { font-size: 20px; color: var(--accent-gold); margin-bottom: 6px; }
+        .modal-desc { font-size: 13px; color: var(--text-dim); margin-bottom: 16px; }
+        .modal-btns { display: flex; flex-direction: column; gap: 8px; }
         .btn-take { background: #2ed573; color: #000; }
         .btn-risk { background: transparent; color: #fff; border: 1px solid rgba(255, 255, 255, 0.3); }
 
-        .topup-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 16px 0; }
-        .topup-btn { padding: 12px; background: rgba(0, 242, 254, 0.1); border: 1px solid var(--accent-color); color: var(--accent-color); border-radius: 8px; font-weight: bold; cursor: pointer; }
+        .topup-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0; }
+        .topup-btn { padding: 10px; background: rgba(0, 242, 254, 0.1); border: 1px solid var(--accent-color); color: var(--accent-color); border-radius: 8px; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -245,7 +231,7 @@
         </div>
         <div class="wallet-box">
             <div class="balance" id="user-balance">100 $ROOM</div>
-            <button class="btn-topup-fast" id="fast-topup-btn" onclick="quickAddFunds()">+<span id="fast-amount">100</span></button>
+            <button class="btn-topup-fast" onclick="quickAddFunds()">+<span id="fast-amount">100</span></button>
             <button class="btn-topup-settings" onclick="openTopUpModal()">⚙️</button>
         </div>
     </header>
@@ -295,8 +281,10 @@
     </div>
 
     <script>
+        // Ініціалізація Telegram WebApp
         const tg = window.Telegram.WebApp;
         tg.expand();
+        tg.ready(); // 🟢 Обов'язковий сигнал для мобільних пристроїв
 
         const roomThemes = {
             1: { sponsor: "Crypto Exchange X", bg: "linear-gradient(135deg, #0f2027, #203a43, #2c5364)", doorBg: "#151a23", doorIcon: "🚪" },
@@ -337,11 +325,8 @@
             document.getElementById('username').innerText = tg.initDataUnsafe.user.first_name;
         }
 
-        // Перший ключ завжди БЕЗКОШТОВНИЙ (0), далі — експоненційне зростання
         function calculateKeyPrice() {
-            if (wrongAttemptsInRoom === 0) {
-                return 0;
-            }
+            if (wrongAttemptsInRoom === 0) return 0;
             const base = roomBaseKeyPrices[currentRoom] || 1;
             return base * Math.pow(2, wrongAttemptsInRoom - 1);
         }
@@ -366,7 +351,7 @@
             const banner = document.getElementById('prize-next-banner');
             if (roomPrizes[currentRoom]) {
                 banner.style.display = 'block';
-                banner.innerText = `🎁 Наступним вдалим кроком ви здобудете: ${roomPrizes[currentRoom]}!`;
+                banner.innerText = `🎁 Приз: ${roomPrizes[currentRoom]}`;
             } else {
                 banner.style.display = 'none';
             }
@@ -426,7 +411,7 @@
             if (doorElem.classList.contains('wrong') || doorElem.classList.contains('trap')) return;
 
             if (userBalance < keyPrice) {
-                alert(`Недостатньо $ROOM! Для відкриття потрібен ключ за ${keyPrice} $ROOM.`);
+                alert(`Недостатньо $ROOM! Потрібно ${keyPrice} $ROOM.`);
                 return;
             }
 
@@ -457,13 +442,13 @@
                     userBalance += refund;
                     totalSpent -= refund;
 
-                    alert(`💥 ПАСТКА!\n\n🛡️ Страховка спрацювала! Вам повернуто 50% витрат на ключі (${refund.toFixed(2)} $ROOM).\nКімната перезапускається!`);
+                    alert(`💥 ПАСТКА!\n\n🛡️ Повернено 50% (${refund.toFixed(2)} $ROOM).\nПерезапуск!`);
                     
                     hasInsurance = false;
                     resetRoomState(false);
                     renderRoom();
                 } else {
-                    alert(`💥 ПАСТКА! У вас не було страховки.\n\n💀 GAME OVER! Вас відкинуто в Кімнату ${Math.max(1, currentRoom - 1)}.`);
+                    alert(`💥 ПАСТКА!\n\n💀 GAME OVER! Назад у Кімнату ${Math.max(1, currentRoom - 1)}.`);
                     currentRoom = Math.max(1, currentRoom - 1);
                     resetRoomState(false);
                     renderRoom();
@@ -472,7 +457,6 @@
             else {
                 doorElem.classList.add('wrong');
                 document.getElementById(`icon-${selected}`).innerText = '⬛';
-
                 wrongAttemptsInRoom++;
                 updateActionPanel();
             }
@@ -480,18 +464,14 @@
 
         function buyInsurance() {
             if (currentRoom === 13 || hasInsurance) return;
-
             if (userBalance < currentInsuranceCost) {
-                alert(`Недостатньо $ROOM для купівлі страховки за $${currentInsuranceCost.toFixed(2)}!`);
+                alert(`Недостатньо $ROOM!`);
                 return;
             }
-
             userBalance -= currentInsuranceCost;
             totalSpent += currentInsuranceCost;
             hasInsurance = true;
             updateWalletUI();
-
-            alert(`🛡️ Страховку успішно придбано!`);
             updateActionPanel();
         }
 
@@ -505,8 +485,6 @@
             }
 
             doorsCount = currentRoom * 2;
-            
-            // ЛІМІТ ПАСТОК (20% до 10 кімнати, 30% далі)
             const trapLimitPercentage = currentRoom <= 10 ? 0.20 : 0.30;
             const maxAllowedTraps = Math.max(1, Math.floor(doorsCount * trapLimitPercentage));
 
@@ -526,7 +504,6 @@
         function quickAddFunds() {
             userBalance += defaultTopUpAmount;
             updateWalletUI();
-            if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
         }
 
         function addFunds(amount) {
@@ -538,20 +515,19 @@
 
         function showPrizeModal() {
             document.getElementById('modal-title-text').innerText = "ВІТАЄМО! 🎉";
-            document.getElementById('modal-desc-text').innerHTML = `Ви пройшли контрольний рівень! Ваш приз: <b style="color:#ffb703;">${roomPrizes[currentRoom]}</b>.`;
+            document.getElementById('modal-desc-text').innerHTML = `Приз: <b style="color:#ffb703;">${roomPrizes[currentRoom]}</b>.`;
             document.getElementById('btn-continue-game').style.display = 'block';
             document.getElementById('prize-modal').style.display = 'flex';
         }
 
         function showFinalVictoryModal() {
-            document.getElementById('modal-title-text').innerText = "🏆 ВЕЛИКА ПЕРЕМОГА! 🏆";
-            document.getElementById('modal-desc-text').innerHTML = `Ви пройшли всі 13 кімнат! Ваш джекпот: <b style="color:#ffb703; font-size:20px;">$1,000,000</b>!`;
+            document.getElementById('modal-title-text').innerText = "🏆 ПЕРЕМОГА! 🏆";
+            document.getElementById('modal-desc-text').innerHTML = `Джекпот: <b style="color:#ffb703;">$1,000,000</b>!`;
             document.getElementById('btn-continue-game').style.display = 'none';
             document.getElementById('prize-modal').style.display = 'flex';
         }
 
         function takePrize() {
-            alert("Ви забрали приз! Гра завершена.");
             document.getElementById('prize-modal').style.display = 'none';
             currentRoom = 1;
             accumulatedTraps = 0;
