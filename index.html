@@ -77,15 +77,6 @@
             cursor: pointer;
         }
 
-        .btn-topup-settings {
-            background: rgba(255, 255, 255, 0.1);
-            color: #fff;
-            border: none;
-            padding: 8px;
-            border-radius: 12px;
-            cursor: pointer;
-        }
-
         .room-header {
             text-align: center;
             margin: 8px 0 4px;
@@ -226,10 +217,8 @@
         .modal-desc { font-size: 14px; color: var(--text-dim); margin-bottom: 20px; }
         .modal-btns { display: flex; flex-direction: column; gap: 10px; }
         .btn-take { background: #2ed573; color: #000; }
+        .btn-share { background: #0088cc; color: #fff; }
         .btn-risk { background: transparent; color: #fff; border: 1px solid rgba(255, 255, 255, 0.3); }
-
-        .topup-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 16px 0; }
-        .topup-btn { padding: 12px; background: rgba(0, 242, 254, 0.1); border: 1px solid var(--accent-color); color: var(--accent-color); border-radius: 8px; font-weight: bold; cursor: pointer; }
 
         @keyframes shake {
             0% { transform: translate(0, 0); }
@@ -255,7 +244,6 @@
         <div class="wallet-box">
             <div class="balance" id="user-balance">100 $ROOM</div>
             <button class="btn-topup-fast" id="fast-topup-btn" onclick="quickAddFunds()">+<span id="fast-amount">100</span></button>
-            <button class="btn-topup-settings" onclick="openTopUpModal()">⚙️</button>
         </div>
     </header>
 
@@ -284,22 +272,10 @@
             <div class="modal-title" id="modal-title-text">ВІТАЄМО! 🎉</div>
             <div class="modal-desc" id="modal-desc-text">Ви пройшли контрольний рівень!</div>
             <div class="modal-btns">
+                <button class="btn btn-share" onclick="shareWin()">📲 Поділитись виграшем</button>
                 <button class="btn btn-take" onclick="takePrize()">💰 Забрати приз і вийти</button>
                 <button class="btn btn-risk" id="btn-continue-game" onclick="continueGame()">🚀 Ризикнути й грати далі</button>
             </div>
-        </div>
-    </div>
-
-    <div class="modal-overlay" id="topup-modal">
-        <div class="modal-card">
-            <div class="modal-title">💳 Поповнення гаманця</div>
-            <div class="topup-grid">
-                <button class="topup-btn" onclick="addFunds(50)">+50 $ROOM</button>
-                <button class="topup-btn" onclick="addFunds(100)">+100 $ROOM</button>
-                <button class="topup-btn" onclick="addFunds(500)">+500 $ROOM</button>
-                <button class="topup-btn" onclick="addFunds(1000)">+1000 $ROOM</button>
-            </div>
-            <button class="btn" style="background:#555; color:#fff;" onclick="closeTopUpModal()">Закрити</button>
         </div>
     </div>
 
@@ -443,8 +419,7 @@
             if (doorElem.classList.contains('wrong') || doorElem.classList.contains('trap')) return;
 
             if (userBalance < keyPrice) {
-                alert(`Недостатньо $ROOM! Для відкриття потрібен ключ за ${keyPrice} $ROOM.\n\n💳 Поповніть баланс, щоб продовжити гру.`);
-                openTopUpModal();
+                alert(`Недостатньо $ROOM! Для відкриття потрібен ключ за ${keyPrice} $ROOM.\n\n Натисніть кнопку "+100", щоб швидше поповнити баланс.`);
                 return;
             }
 
@@ -504,8 +479,7 @@
             }
 
             if (userBalance < currentInsuranceCost) {
-                alert(`Недостатньо $ROOM для купівлі страховки за $${currentInsuranceCost.toFixed(2)}!\n\n💳 Поповніть баланс, щоб продовжити гру.`);
-                openTopUpModal();
+                alert(`Недостатньо $ROOM для купівлі страховки за $${currentInsuranceCost.toFixed(2)}!\n\n Скористайтесь поповненням рахунку.`);
                 return;
             }
 
@@ -570,16 +544,9 @@
             if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
         }
 
-        function addFunds(amount) {
-            defaultTopUpAmount = amount;
-            userBalance += amount;
-            updateWalletUI();
-            closeTopUpModal();
-        }
-
         function showPrizeModal() {
             document.getElementById('modal-title-text').innerText = "ВІТАЄМО! 🎉";
-            document.getElementById('modal-desc-text').innerHTML = `Ви пройшли контрольний рівень! Ваш приз: <b style="color:#ffb703;">${roomPrizes[currentRoom]}</b>.`;
+            document.getElementById('modal-desc-text').innerHTML = `Ви пройшли контрольний рівень ${currentRoom}! Ваш приз: <b style="color:#ffb703;">${roomPrizes[currentRoom]}</b>.`;
             document.getElementById('btn-continue-game').style.display = 'block';
             document.getElementById('prize-modal').style.display = 'flex';
         }
@@ -589,6 +556,23 @@
             document.getElementById('modal-desc-text').innerHTML = `Ви пройшли всі 13 кімнат! Ваш джекпот: <b style="color:#ffb703; font-size:20px;">$1,000,000</b>!`;
             document.getElementById('btn-continue-game').style.display = 'none';
             document.getElementById('prize-modal').style.display = 'flex';
+        }
+
+        function shareWin() {
+            const prizeText = roomPrizes[currentRoom] || "$1,000,000";
+            const text = encodeURIComponent(`🎉 Я щойно виграв ${prizeText} у грі Hotel 13! Спробуй і ти пройти всі кімнати:`);
+            
+            if (tg && tg.openTelegramLink) {
+                tg.openTelegramLink(`https://t.me/share/url?url=&text=${text}`);
+            } else if (navigator.share) {
+                navigator.share({
+                    title: 'Hotel 13',
+                    text: `🎉 Я щойно виграв ${prizeText} у грі Hotel 13!`,
+                }).catch(() => {});
+            } else {
+                navigator.clipboard.writeText(`🎉 Я щойно виграв ${prizeText} у грі Hotel 13!`);
+                alert("Текст виграшу скопійовано в буфер обміну!");
+            }
         }
 
         function takePrize() {
@@ -617,10 +601,6 @@
             renderRoom();
         }
 
-        function openTopUpModal() { document.getElementById('topup-modal').style.display = 'flex'; }
-        function closeTopUpModal() { document.getElementById('topup-modal').style.display = 'none'; }
-
-        // Точна послідовність запусків при завантаженні:
         resetRoomState(false);
         renderRoom();
     </script>
