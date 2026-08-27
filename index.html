@@ -7,7 +7,7 @@
     
     <!-- Telegram WebApp SDK -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <!-- html2canvas для генерації зображення-картки (ВИПРАВЛЕНО ПОСИЛАННЯ) -->
+    <!-- html2canvas для генерації зображення-картки -->
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
     <style>
@@ -575,19 +575,25 @@
             }
 
             doorsCount = currentRoom * 2;
-            const trapLimitPercentage = currentRoom <= 10 ? 0.20 : 0.30;
-            const maxAllowedTraps = Math.max(1, Math.floor(doorsCount * trapLimitPercentage));
+
+            const maxAllowedTraps = Math.min(
+                doorsCount - 1,
+                Math.max(1, Math.floor(doorsCount * (currentRoom <= 10 ? 0.20 : 0.30)))
+            );
 
             activeTrapsCount = Math.min(accumulatedTraps, maxAllowedTraps);
 
             winningDoor = Math.floor(Math.random() * doorsCount) + 1;
             trapDoors = [];
 
-            while (trapDoors.length < activeTrapsCount) {
-                let randTrap = Math.floor(Math.random() * doorsCount) + 1;
-                if (randTrap !== winningDoor && !trapDoors.includes(randTrap)) {
-                    trapDoors.push(randTrap);
-                }
+            let availableForTraps = [];
+            for (let i = 1; i <= doorsCount; i++) {
+                if (i !== winningDoor) availableForTraps.push(i);
+            }
+
+            while (trapDoors.length < activeTrapsCount && availableForTraps.length > 0) {
+                const randomIndex = Math.floor(Math.random() * availableForTraps.length);
+                trapDoors.push(availableForTraps.splice(randomIndex, 1)[0]);
             }
         }
 
