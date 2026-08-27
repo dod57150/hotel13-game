@@ -290,10 +290,6 @@
         </div>
     </div>
 
-    <!-- ВСТАВЛЯТИ СУДИ: після блоку з дверима -->
-<button id="share-card-btn" style="display: none;" onclick="shareVictoryCard()">
-  📸 Похизуватися результатом
-</button>
     <div class="modal-overlay" id="topup-modal">
         <div class="modal-card">
             <div class="modal-title">💳 Поповнення гаманця</div>
@@ -309,45 +305,21 @@
 
     <!-- Canvas Confetti -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <!-- Eruda (відлагодження) -->
+    <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+    <script>eruda.init();</script>
 
     <script>
-        // ==========================================
-        // 1. ІНІЦІАЛІЗАЦІЯ TELEGRAM WEBAPP SDK
-        // ==========================================
+        // Ініціалізація Telegram SDK
         const tg = (window.Telegram && window.Telegram.WebApp) ? window.Telegram.WebApp : null;
-
         if (tg) {
             tg.ready();
-            tg.expand(); // Розгортаємо WebApp на весь екран смартфона
-
-            // Забігаємо наперед: забороняємо згортання свайпом вниз у сумісних версіях SDK
-            if (tg.isVerticalSwipesEnabled !== undefined) {
-                tg.isVerticalSwipesEnabled = false;
-            }
-
-            // Налаштовуємо кольори системних панелей під тему гри
-            if (tg.setHeaderColor) tg.setHeaderColor('#0b0e14');
-            if (tg.setBackgroundColor) tg.setBackgroundColor('#0b0e14');
-
-            // Підставляємо ім'я користувача з Telegram
+            tg.expand();
             if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
                 document.getElementById('username').innerText = tg.initDataUnsafe.user.first_name;
             }
         }
 
-        // Хелпер для безпечного викликання вібрації (Haptic Feedback)
-        function triggerHaptic(type = 'light') {
-            if (!tg || !tg.HapticFeedback) return;
-            if (['error', 'success', 'warning'].includes(type)) {
-                tg.HapticFeedback.notificationOccurred(type);
-            } else {
-                tg.HapticFeedback.impactOccurred(type);
-            }
-        }
-
-        // ==========================================
-        // 2. ІГРОВА ЛОГІКА ТА ЗМІННІ
-        // ==========================================
         const roomThemes = {
             1: { sponsor: "Crypto Exchange X", bg: "linear-gradient(135deg, #0f2027, #203a43, #2c5364)", doorBg: "#151a23", doorIcon: "🚪" },
             2: { sponsor: "Binance Partner", bg: "linear-gradient(135deg, #1e130c, #4a2f00)", doorBg: "#2a1e0a", doorIcon: "🚪" },
@@ -474,7 +446,6 @@
             if (doorElem.classList.contains('wrong') || doorElem.classList.contains('trap')) return;
 
             if (userBalance < keyPrice) {
-                triggerHaptic('warning');
                 alert(`Недостатньо $ROOM! Для відкриття потрібен ключ за ${keyPrice} $ROOM.\n\n💳 Поповніть баланс, щоб продовжити гру.`);
                 openTopUpModal();
                 return;
@@ -485,12 +456,11 @@
             roomKeysSpent += keyPrice;
             updateWalletUI();
 
-            triggerHaptic('medium'); // Тактильний відгук при кліку на двері
+            if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
 
             if (selected === winningDoor) {
-                // Успіх
                 if (window.confetti) confetti({ particleCount: 60, spread: 60, origin: { y: 0.7 } });
-                triggerHaptic('success');
+                if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
 
                 if (currentRoom === 13) {
                     showFinalVictoryModal();
@@ -503,13 +473,12 @@
                 }
             } 
             else if (trapDoors.includes(selected)) {
-                // Пастка
                 doorElem.classList.add('trap');
                 document.getElementById(`icon-${selected}`).innerText = '☠️';
 
                 document.body.classList.add('shake-effect');
                 setTimeout(() => document.body.classList.remove('shake-effect'), 400);
-                triggerHaptic('error');
+                if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
 
                 if (hasInsurance) {
                     useInsurance('trap');
@@ -521,7 +490,6 @@
                 }
             } 
             else {
-                // Порожня дверка
                 doorElem.classList.add('wrong');
                 document.getElementById(`icon-${selected}`).innerText = '⬛';
 
@@ -539,7 +507,6 @@
             }
 
             if (userBalance < currentInsuranceCost) {
-                triggerHaptic('warning');
                 alert(`Недостатньо $ROOM для купівлі страховки за $${currentInsuranceCost.toFixed(2)}!\n\n💳 Поповніть баланс, щоб продовжити гру.`);
                 openTopUpModal();
                 return;
@@ -550,7 +517,7 @@
             hasInsurance = true;
             updateWalletUI();
 
-            triggerHaptic('success');
+            if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
             alert(`🛡️ Страховку успішно придбано!\n\nВона спрацює автоматично, якщо ви влучите в пастку. Або натисніть цю кнопку ще раз у будь-який момент, щоб активувати її самостійно — це поверне 50% витрачених у цій кімнаті ключів і почне спробу заново.`);
             updateActionPanel();
         }
@@ -561,7 +528,7 @@
             totalSpent -= refund;
             hasInsurance = false;
 
-            triggerHaptic('success');
+            if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
 
             if (reason === 'trap') {
                 alert(`💥 ПАСТКА!\n\n🛡️ Страховка спрацювала! Вам повернуто 50% витрат на ключі (${refund.toFixed(2)} $ROOM).\nКімната перезапускається!`);
@@ -603,14 +570,13 @@
         function quickAddFunds() {
             userBalance += defaultTopUpAmount;
             updateWalletUI();
-            triggerHaptic('light');
+            if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
         }
 
         function addFunds(amount) {
             defaultTopUpAmount = amount;
             userBalance += amount;
             updateWalletUI();
-            triggerHaptic('light');
             closeTopUpModal();
         }
 
@@ -635,7 +601,6 @@
             if (prizeAmount > 0) {
                 userBalance += prizeAmount;
                 updateWalletUI();
-                triggerHaptic('success');
                 alert(`💰 Ви успішно забрали приз: ${prizeAmount} $ROOM!\nГроші зараховано на ваш баланс. Гра починається з початку.`);
             } else {
                 alert("Ви вийшли з гри.");
@@ -647,7 +612,7 @@
             resetRoomState(true);
             renderRoom();
         }
-
+        
         function continueGame() {
             document.getElementById('prize-modal').style.display = 'none';
             currentRoom++;
@@ -655,140 +620,11 @@
             renderRoom();
         }
 
-        function openTopUpModal() { 
-            triggerHaptic('light');
-            document.getElementById('topup-modal').style.display = 'flex'; 
-        }
-        function closeTopUpModal() { 
-            triggerHaptic('light');
-            document.getElementById('topup-modal').style.display = 'none'; 
-        }
+        function openTopUpModal() { document.getElementById('topup-modal').style.display = 'flex'; }
+        function closeTopUpModal() { document.getElementById('topup-modal').style.display = 'none'; }
 
         resetRoomState(false);
         renderRoom();
-   <script>
-  // ... тут знаходиться весь ваш ІСНУЮЧИЙ код гри ...
-
-
-  // ==========================================
-  // ВСТАВЛЯЙТЕ НОВИЙ КОД ОДРАЗУ СУДИ (В КІНЕЦЬ):
-  // ==========================================
-
-  const BACKEND_URL = "https://your-server.com/api/send-card";
-
-  function showShareButton(winAmount) {
-    const shareBtn = document.getElementById('share-card-btn');
-    if (shareBtn) {
-      shareBtn.style.display = 'block'; // робимо кнопку видимою
-      shareBtn.dataset.winAmount = winAmount;
-    }
-  }
-
-  async function shareVictoryCard() {
-    const tg = window.Telegram?.WebApp;
-    const playerName = tg?.initDataUnsafe?.user?.first_name || "Гравець";
-    const userId = tg?.initDataUnsafe?.user?.id;
-    const initData = tg?.initData;
-
-    const winAmount = document.getElementById('share-card-btn')?.dataset.winAmount || "100";
-    const floorCleared = (typeof currentFloor !== 'undefined') ? currentFloor : 1;
-
-    const canvas = document.createElement('canvas');
-    canvas.width = 1200;
-    canvas.height = 630;
-    const ctx = canvas.getContext('2d');
-
-    // Малюємо картку
-    const bgGradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-    bgGradient.addColorStop(0, '#0F0C20');
-    bgGradient.addColorStop(0.5, '#15102A');
-    bgGradient.addColorStop(1, '#06040A');
-    ctx.fillStyle = bgGradient;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    const glow = ctx.createRadialGradient(600, 315, 50, 600, 315, 450);
-    glow.addColorStop(0, 'rgba(235, 179, 54, 0.18)');
-    glow.addColorStop(1, 'transparent');
-    ctx.fillStyle = glow;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.04)';
-    ctx.strokeStyle = 'rgba(235, 179, 54, 0.4)';
-    ctx.lineWidth = 3;
-    drawRoundedRect(ctx, 100, 80, 1000, 470, 24);
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.fillStyle = '#EBB336';
-    ctx.font = 'bold 36px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('HOTEL 13 • VICTORY CARD', 600, 150);
-
-    ctx.fillStyle = '#FFFFFF';
-    ctx.font = 'bold 52px sans-serif';
-    ctx.fillText(`${playerName} пройшов Кімнату ${floorCleared}!`, 600, 240);
-
-    ctx.fillStyle = '#4DE7A8';
-    ctx.font = 'extrabold 80px sans-serif';
-    ctx.fillText(`+$${winAmount} $ROOM`, 600, 360);
-
-    ctx.fillStyle = '#A0A0B0';
-    ctx.font = '28px sans-serif';
-    ctx.fillText('Заходь у Hotel 13 та випробуй свою удачу!', 600, 450);
-
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
-    ctx.font = 'italic 20px sans-serif';
-    ctx.fillText('Витрати приховано • Виграш збережено на баланс', 600, 500);
-
-    // Відправка
-    canvas.toBlob(async (blob) => {
-      if (!userId) {
-        const shareUrl = `https://t.me/YourBotUsername?startapp=ref_guest`;
-        const shareText = `🔥 Я щойно здолав Кімнату ${floorCleared} у Hotel 13!`;
-        window.open(`https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`, '_blank');
-        return;
-      }
-
-      const formData = new FormData();
-      formData.append("photo", blob, "victory-card.png");
-      formData.append("user_id", userId);
-      formData.append("init_data", initData);
-
-      try {
-        tg?.MainButton?.setText("НАДСИЛАННЯ...").show();
-        const response = await fetch(BACKEND_URL, { method: "POST", body: formData });
-        const result = await response.json();
-
-        if (result.ok) {
-          tg?.HapticFeedback?.notificationOccurred('success');
-          tg?.showAlert("🏆 Картку перемоги надіслано у ваш чат з ботом!");
-        } else {
-          throw new Error(result.error);
-        }
-      } catch (err) {
-        const shareUrl = `https://t.me/YourBotUsername?startapp=ref_${userId}`;
-        const shareText = `🔥 Я щойно здолав Кімнату ${floorCleared} у Hotel 13!`;
-        tg?.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`);
-      } finally {
-        tg?.MainButton?.hide();
-      }
-    }, "image/png");
-  }
-
-  function drawRoundedRect(ctx, x, y, width, height, radius) {
-    ctx.beginPath();
-    ctx.moveTo(x + radius, y);
-    ctx.lineTo(x + width - radius, y);
-    ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
-    ctx.lineTo(x + width, y + height - radius);
-    ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
-    ctx.lineTo(x + radius, y + height);
-    ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
-    ctx.lineTo(x, y + radius);
-    ctx.quadraticCurveTo(x, y, x + radius, y);
-    ctx.closePath();
-  }
-</script>
     </script>
 </body>
 </html>
