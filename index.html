@@ -127,7 +127,7 @@
 
         .doors-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
             gap: 10px;
             margin: 10px 0;
             max-height: 42vh;
@@ -307,43 +307,16 @@
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 
     <script>
-        // ==========================================
-        // 1. ІНІЦІАЛІЗАЦІЯ TELEGRAM WEBAPP SDK
-        // ==========================================
+        // Ініціалізація Telegram SDK
         const tg = (window.Telegram && window.Telegram.WebApp) ? window.Telegram.WebApp : null;
-
         if (tg) {
             tg.ready();
-            tg.expand(); // Розгортаємо WebApp на весь екран смартфона
-
-            // Забігаємо наперед: забороняємо згортання свайпом вниз у сумісних версіях SDK
-            if (tg.isVerticalSwipesEnabled !== undefined) {
-                tg.isVerticalSwipesEnabled = false;
-            }
-
-            // Налаштовуємо кольори системних панелей під тему гри
-            if (tg.setHeaderColor) tg.setHeaderColor('#0b0e14');
-            if (tg.setBackgroundColor) tg.setBackgroundColor('#0b0e14');
-
-            // Підставляємо ім'я користувача з Telegram
+            tg.expand();
             if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
                 document.getElementById('username').innerText = tg.initDataUnsafe.user.first_name;
             }
         }
 
-        // Хелпер для безпечного викликання вібрації (Haptic Feedback)
-        function triggerHaptic(type = 'light') {
-            if (!tg || !tg.HapticFeedback) return;
-            if (['error', 'success', 'warning'].includes(type)) {
-                tg.HapticFeedback.notificationOccurred(type);
-            } else {
-                tg.HapticFeedback.impactOccurred(type);
-            }
-        }
-
-        // ==========================================
-        // 2. ІГРОВА ЛОГІКА ТА ЗМІННІ
-        // ==========================================
         const roomThemes = {
             1: { sponsor: "Crypto Exchange X", bg: "linear-gradient(135deg, #0f2027, #203a43, #2c5364)", doorBg: "#151a23", doorIcon: "🚪" },
             2: { sponsor: "Binance Partner", bg: "linear-gradient(135deg, #1e130c, #4a2f00)", doorBg: "#2a1e0a", doorIcon: "🚪" },
@@ -400,7 +373,7 @@
             document.getElementById('sponsor-name').innerText = `Спонсор: ${theme.sponsor}`;
             document.getElementById('room-name').innerText = `КІМНАТА ${currentRoom}`;
             
-            const emptyDoorsCount = doorsCount - 1 - activeTrapsCount;
+            const emptyDoorsCount = Math.max(0, doorsCount - 1 - activeTrapsCount);
             document.getElementById('room-doors-count').innerText = 
                 `Склад: 1 Виграш | ${activeTrapsCount} ☠️ Пасток | ${emptyDoorsCount} Порожніх`;
 
@@ -470,7 +443,6 @@
             if (doorElem.classList.contains('wrong') || doorElem.classList.contains('trap')) return;
 
             if (userBalance < keyPrice) {
-                triggerHaptic('warning');
                 alert(`Недостатньо $ROOM! Для відкриття потрібен ключ за ${keyPrice} $ROOM.\n\n💳 Поповніть баланс, щоб продовжити гру.`);
                 openTopUpModal();
                 return;
@@ -481,12 +453,11 @@
             roomKeysSpent += keyPrice;
             updateWalletUI();
 
-            triggerHaptic('medium'); // Тактильний відгук при кліку на двері
+            if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
 
             if (selected === winningDoor) {
-                // Успіх
                 if (window.confetti) confetti({ particleCount: 60, spread: 60, origin: { y: 0.7 } });
-                triggerHaptic('success');
+                if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
 
                 if (currentRoom === 13) {
                     showFinalVictoryModal();
@@ -499,13 +470,12 @@
                 }
             } 
             else if (trapDoors.includes(selected)) {
-                // Пастка
                 doorElem.classList.add('trap');
                 document.getElementById(`icon-${selected}`).innerText = '☠️';
 
                 document.body.classList.add('shake-effect');
                 setTimeout(() => document.body.classList.remove('shake-effect'), 400);
-                triggerHaptic('error');
+                if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
 
                 if (hasInsurance) {
                     useInsurance('trap');
@@ -517,7 +487,6 @@
                 }
             } 
             else {
-                // Порожня дверка
                 doorElem.classList.add('wrong');
                 document.getElementById(`icon-${selected}`).innerText = '⬛';
 
@@ -535,7 +504,6 @@
             }
 
             if (userBalance < currentInsuranceCost) {
-                triggerHaptic('warning');
                 alert(`Недостатньо $ROOM для купівлі страховки за $${currentInsuranceCost.toFixed(2)}!\n\n💳 Поповніть баланс, щоб продовжити гру.`);
                 openTopUpModal();
                 return;
@@ -546,7 +514,7 @@
             hasInsurance = true;
             updateWalletUI();
 
-            triggerHaptic('success');
+            if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
             alert(`🛡️ Страховку успішно придбано!\n\nВона спрацює автоматично, якщо ви влучите в пастку. Або натисніть цю кнопку ще раз у будь-який момент, щоб активувати її самостійно — це поверне 50% витрачених у цій кімнаті ключів і почне спробу заново.`);
             updateActionPanel();
         }
@@ -557,7 +525,7 @@
             totalSpent -= refund;
             hasInsurance = false;
 
-            triggerHaptic('success');
+            if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
 
             if (reason === 'trap') {
                 alert(`💥 ПАСТКА!\n\n🛡️ Страховка спрацювала! Вам повернуто 50% витрат на ключі (${refund.toFixed(2)} $ROOM).\nКімната перезапускається!`);
@@ -599,14 +567,13 @@
         function quickAddFunds() {
             userBalance += defaultTopUpAmount;
             updateWalletUI();
-            triggerHaptic('light');
+            if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
         }
 
         function addFunds(amount) {
             defaultTopUpAmount = amount;
             userBalance += amount;
             updateWalletUI();
-            triggerHaptic('light');
             closeTopUpModal();
         }
 
@@ -631,7 +598,6 @@
             if (prizeAmount > 0) {
                 userBalance += prizeAmount;
                 updateWalletUI();
-                triggerHaptic('success');
                 alert(`💰 Ви успішно забрали приз: ${prizeAmount} $ROOM!\nГроші зараховано на ваш баланс. Гра починається з початку.`);
             } else {
                 alert("Ви вийшли з гри.");
@@ -643,7 +609,7 @@
             resetRoomState(true);
             renderRoom();
         }
-
+        
         function continueGame() {
             document.getElementById('prize-modal').style.display = 'none';
             currentRoom++;
@@ -651,15 +617,10 @@
             renderRoom();
         }
 
-        function openTopUpModal() { 
-            triggerHaptic('light');
-            document.getElementById('topup-modal').style.display = 'flex'; 
-        }
-        function closeTopUpModal() { 
-            triggerHaptic('light');
-            document.getElementById('topup-modal').style.display = 'none'; 
-        }
+        function openTopUpModal() { document.getElementById('topup-modal').style.display = 'flex'; }
+        function closeTopUpModal() { document.getElementById('topup-modal').style.display = 'none'; }
 
+        // Точна послідовність запусків при завантаженні:
         resetRoomState(false);
         renderRoom();
     </script>
