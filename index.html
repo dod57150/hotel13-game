@@ -634,66 +634,84 @@
         }
 
         async function shareSuccessWin() {
-            const btn = document.getElementById('share-btn');
-            btn.innerText = "⏳ Формуємо картку...";
-            btn.disabled = true;
+    const btn = document.getElementById('share-btn');
+    if (btn) {
+        btn.innerText = "⏳ Формуємо картку...";
+        btn.disabled = true;
+    }
 
-            const cardElement = document.getElementById('shareable-result-card');
-            const shareText = `🔥 Гравець ${playerName} щойно виграв і забрав ${lastClaimedPrize} у гри Hotel 13 (Кімната ${lastPassedRoom})! Спробуй перевершити цей результат! 🚀`;
+    // 1. Формуємо СТИСЛЕ та чисто посилання без службового хешу tgWebAppData
+    // Якщо гра працює через Telegram-бота, замініть `cleanUrl` на посилання на бота, наприклад:
+    // const cleanUrl = "https://t.me/YourBotName_bot/app";
+    const cleanUrl = window.location.origin + window.location.pathname;
 
-            try {
-                // Створення зображення картки з DOM через html2canvas
-                const canvas = await html2canvas(cardElement, { scale: 2, backgroundColor: null });
-                
-                canvas.toBlob(async (blob) => {
-                    const file = new File([blob], `hotel13_win_${lastClaimedPrize}.png`, { type: 'image/png' });
+    // 2. Короткий текст для публікації
+    const shareText = `🔥 Я щойно забрав ${lastClaimedPrize} у Hotel 13 (Кімната ${lastPassedRoom})! Спробуй перевершити мій результат! 🚀`;
 
-                    // 1. Спроба використати нативний мобільний Web Share з файлом зображення
-                    if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-                        try {
-                            await navigator.share({
-                                title: 'Hotel 13 Win',
-                                text: shareText,
-                                files: [file]
-                            });
-                            btn.innerText = "🚀 Розповісти про успіх";
-                            btn.disabled = false;
-                            return;
-                        } catch (e) {
-                            console.log("Share call failed/cancelled", e);
-                        }
+    const cardElement = document.getElementById('shareable-result-card');
+
+    try {
+        const canvas = await html2canvas(cardElement, { scale: 2, backgroundColor: null });
+
+        canvas.toBlob(async (blob) => {
+            const file = new File([blob], `hotel13_win_${lastClaimedPrize}.png`, { type: 'image/png' });
+
+            // Шеринг файлу з текстом через Web Share API (якщо пристрій підтримує)
+            if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+                try {
+                    await navigator.share({
+                        title: 'Hotel 13 Win',
+                        text: `${shareText}\n${cleanUrl}`,
+                        files: [file]
+                    });
+                    if (btn) {
+                        btn.innerText = "🚀 Розповісти про успіх";
+                        btn.disabled = false;
                     }
-
-                    // 2. Якщо в Telegram WebApp — пересилання через Telegram
-                    if (tg && tg.openTelegramLink) {
-                        const tgShareUrl = `https://t.me/share/url?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(shareText)}`;
-                        tg.openTelegramLink(tgShareUrl);
-                    } else {
-                        // 3. Фолбек: Завантаження зображення картки + Копіювання тексту
-                        const link = document.createElement('a');
-                        link.download = `Hotel13_Win_${lastClaimedPrize}.png`;
-                        link.href = canvas.toDataURL();
-                        link.click();
-
-                        if (navigator.clipboard) {
-                            await navigator.clipboard.writeText(shareText);
-                        }
-                        alert("📸 Картку результату завантажено, а текст скопійовано в буфер обміну! Поділіться ним у будь-якому чаті.");
-                    }
-
-                    btn.innerText = "🚀 Розповісти про успіх";
-                    btn.disabled = false;
-                }, 'image/png');
-
-            } catch (err) {
-                console.error(err);
-                alert("Не вдалося згенерувати картку. Відкриваємо текстове повідомлення.");
-                if (tg && tg.openTelegramLink) {
-                    tg.openTelegramLink(`https://t.me/share/url?text=${encodeURIComponent(shareText)}`);
+                    return;
+                } catch (e) {
+                    console.log("Share cancelled or failed", e);
                 }
+            }
+
+            // Прямий шеринг у Telegram через коротке посилання
+            if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.openTelegramLink) {
+                const tgShareUrl = `https://t.me/share/url?url=${encodeURIComponent(cleanUrl)}&text=${encodeURIComponent(shareText)}`;
+                window.Telegram.WebApp.openTelegramLink(tgShareUrl);
+            } else {
+                // Запасний варіант для звичайного браузера
+                const link = document.createElement('a');
+                link.download = `Hotel13_Win_${lastClaimedPrize}.png`;
+                link.href = canvas.toDataURL();
+                link.click();
+
+                if (navigator.clipboard) {
+                    await navigator.clipboard.writeText(`${shareText}\n${cleanUrl}`);
+                }
+                alert("📸 Картку завантажено, а коротке посилання скопійовано!");
+            }
+
+            if (btn) {
                 btn.innerText = "🚀 Розповісти про успіх";
                 btn.disabled = false;
             }
+        }, 'image/png');
+
+    } catch (err) {
+        console.error("Error sharing win card:", err);
+
+        // Помилковий фолбек
+        if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.openTelegramLink) {
+            const tgShareUrl = `https://t.me/share/url?url=${encodeURIComponent(cleanUrl)}&text=${encodeURIComponent(shareText)}`;
+            window.Telegram.WebApp.openTelegramLink(tgShareUrl);
+        }
+
+        if (btn) {
+            btn.innerText = "🚀 Розповісти про успіх";
+            btn.disabled = false;
+        }
+    }
+}
         }
 
         function closeSuccessModalAndReset() {
