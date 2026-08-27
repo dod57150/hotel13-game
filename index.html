@@ -3,10 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Hotel 13 - Web3 Game V11</title>
+    <title>Hotel 13 - Web3 Game V12</title>
     
     <!-- Telegram WebApp SDK -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!-- html2canvas для генерації зображення-картки -->
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.min.js"></script>
+
     <style>
         :root {
             --bg-color: #0b0e14;
@@ -176,7 +179,10 @@
             font-weight: 700;
             font-size: 14px;
             cursor: pointer;
+            transition: transform 0.1s active;
         }
+
+        .btn:active { transform: scale(0.98); }
 
         .btn-insurance-buy {
             background: rgba(255, 183, 3, 0.15);
@@ -217,8 +223,36 @@
         .modal-desc { font-size: 14px; color: var(--text-dim); margin-bottom: 20px; }
         .modal-btns { display: flex; flex-direction: column; gap: 10px; }
         .btn-take { background: #2ed573; color: #000; }
-        .btn-share { background: #0088cc; color: #fff; }
+        .btn-share { background: linear-gradient(135deg, #0088cc, #00c6ff); color: #fff; font-size: 15px; }
         .btn-risk { background: transparent; color: #fff; border: 1px solid rgba(255, 255, 255, 0.3); }
+
+        /* Шаблон Картки Успіху (для рендерингу зображення/повідомлення) */
+        .result-card-preview {
+            background: linear-gradient(135deg, #1e1b4b, #311042);
+            border: 2px solid var(--accent-gold);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 8px 24px rgba(255, 183, 3, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .result-card-preview::before {
+            content: "HOTEL 13";
+            position: absolute;
+            right: -10px;
+            bottom: -10px;
+            font-size: 40px;
+            font-weight: 900;
+            color: rgba(255, 255, 255, 0.04);
+            letter-spacing: 2px;
+        }
+
+        .card-trophy { font-size: 42px; margin-bottom: 4px; }
+        .card-amount { font-size: 32px; font-weight: 900; color: var(--accent-gold); text-shadow: 0 0 10px rgba(255, 183, 3, 0.5); }
+        .card-player { font-size: 13px; color: var(--accent-color); font-weight: 700; margin-top: 4px; }
+        .card-room-info { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
 
         @keyframes shake {
             0% { transform: translate(0, 0); }
@@ -229,9 +263,7 @@
             100% { transform: translate(0, 0); }
         }
 
-        .shake-effect {
-            animation: shake 0.4s ease-in-out;
-        }
+        .shake-effect { animation: shake 0.4s ease-in-out; }
     </style>
 </head>
 <body>
@@ -267,14 +299,34 @@
         </button>
     </div>
 
+    <!-- Модалка вибору: ризикнути чи забрати -->
     <div class="modal-overlay" id="prize-modal">
         <div class="modal-card">
             <div class="modal-title" id="modal-title-text">ВІТАЄМО! 🎉</div>
             <div class="modal-desc" id="modal-desc-text">Ви пройшли контрольний рівень!</div>
             <div class="modal-btns">
-                <button class="btn btn-share" onclick="shareWin()">📲 Поділитись виграшем</button>
                 <button class="btn btn-take" onclick="takePrize()">💰 Забрати приз і вийти</button>
                 <button class="btn btn-risk" id="btn-continue-game" onclick="continueGame()">🚀 Ризикнути й грати далі</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модалка виграшу з візуальною Карткою Результату -->
+    <div class="modal-overlay" id="success-claim-modal">
+        <div class="modal-card">
+            <div class="modal-title">ПРИЗ ЗАРАХОВАНО! 🤑</div>
+            
+            <!-- Візуальна картка для похвасту -->
+            <div class="result-card-preview" id="shareable-result-card">
+                <div class="card-trophy">🏆</div>
+                <div class="card-amount" id="card-prize-val">$100</div>
+                <div class="card-player" id="card-player-name">Гравець</div>
+                <div class="card-room-info" id="card-room-info">Пройдено Кімнату 6 у Hotel 13</div>
+            </div>
+
+            <div class="modal-btns">
+                <button class="btn btn-share" id="share-btn" onclick="shareSuccessWin()">🚀 Розповісти про успіх</button>
+                <button class="btn btn-take" onclick="closeSuccessModalAndReset()">Грати знову 🔄</button>
             </div>
         </div>
     </div>
@@ -283,13 +335,15 @@
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 
     <script>
-        // Ініціалізація Telegram SDK
         const tg = (window.Telegram && window.Telegram.WebApp) ? window.Telegram.WebApp : null;
+        let playerName = "Гравець";
+
         if (tg) {
             tg.ready();
             tg.expand();
             if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
-                document.getElementById('username').innerText = tg.initDataUnsafe.user.first_name;
+                playerName = tg.initDataUnsafe.user.first_name || "Гравець";
+                document.getElementById('username').innerText = playerName;
             }
         }
 
@@ -319,6 +373,8 @@
         let totalSpent = 0;
         let roomKeysSpent = 0;
         let defaultTopUpAmount = 100;
+        let lastClaimedPrize = "$0";
+        let lastPassedRoom = 1;
 
         let accumulatedTraps = 0;
         let activeTrapsCount = 1;
@@ -329,9 +385,7 @@
         let wrongAttemptsInRoom = 0;
 
         function calculateKeyPrice() {
-            if (wrongAttemptsInRoom === 0) {
-                return 0;
-            }
+            if (wrongAttemptsInRoom === 0) return 0;
             const base = roomBaseKeyPrices[currentRoom] || 1;
             return base * Math.pow(2, wrongAttemptsInRoom - 1);
         }
@@ -419,7 +473,7 @@
             if (doorElem.classList.contains('wrong') || doorElem.classList.contains('trap')) return;
 
             if (userBalance < keyPrice) {
-                alert(`Недостатньо $ROOM! Для відкриття потрібен ключ за ${keyPrice} $ROOM.\n\n Натисніть кнопку "+100", щоб швидше поповнити баланс.`);
+                alert(`Недостатньо $ROOM! Для відкриття потрібен ключ за ${keyPrice} $ROOM.`);
                 return;
             }
 
@@ -433,6 +487,8 @@
             if (selected === winningDoor) {
                 if (window.confetti) confetti({ particleCount: 60, spread: 60, origin: { y: 0.7 } });
                 if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+
+                lastPassedRoom = currentRoom;
 
                 if (currentRoom === 13) {
                     showFinalVictoryModal();
@@ -455,7 +511,7 @@
                 if (hasInsurance) {
                     useInsurance('trap');
                 } else {
-                    alert(`💥 ПАСТКА! У вас не було страховки.\n\n💀 GAME OVER! Вас відкинуто в Кімнату ${Math.max(1, currentRoom - 1)}.`);
+                    alert(`💥 ПАСТКА!\n\n💀 GAME OVER! Вас відкинуто в Кімнату ${Math.max(1, currentRoom - 1)}.`);
                     currentRoom = Math.max(1, currentRoom - 1);
                     resetRoomState(false);
                     renderRoom();
@@ -479,7 +535,7 @@
             }
 
             if (userBalance < currentInsuranceCost) {
-                alert(`Недостатньо $ROOM для купівлі страховки за $${currentInsuranceCost.toFixed(2)}!\n\n Скористайтесь поповненням рахунку.`);
+                alert(`Недостатньо $ROOM для купівлі страховки за $${currentInsuranceCost.toFixed(2)}!`);
                 return;
             }
 
@@ -489,7 +545,7 @@
             updateWalletUI();
 
             if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-            alert(`🛡️ Страховку успішно придбано!\n\nВона спрацює автоматично, якщо ви влучите в пастку. Або натисніть цю кнопку ще раз у будь-який момент, щоб активувати її самостійно — це поверне 50% витрачених у цій кімнаті ключів і почне спробу заново.`);
+            alert(`🛡️ Страховку успішно придбано!`);
             updateActionPanel();
         }
 
@@ -502,9 +558,9 @@
             if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
 
             if (reason === 'trap') {
-                alert(`💥 ПАСТКА!\n\n🛡️ Страховка спрацювала! Вам повернуто 50% витрат на ключі (${refund.toFixed(2)} $ROOM).\nКімната перезапускається!`);
+                alert(`💥 ПАСТКА!\n\n🛡️ Страховка спрацювала! Повернуто 50% витрат (${refund.toFixed(2)} $ROOM).`);
             } else {
-                alert(`🛡️ Страховку активовано вручну!\n\nВам повернуто 50% витрачених у цій кімнаті ключів (${refund.toFixed(2)} $ROOM).\nСпроба в кімнаті починається заново!`);
+                alert(`🛡️ Страховку активовано! Повернуто 50% витрат (${refund.toFixed(2)} $ROOM).`);
             }
 
             resetRoomState(false);
@@ -521,7 +577,6 @@
             }
 
             doorsCount = currentRoom * 2;
-            
             const trapLimitPercentage = currentRoom <= 10 ? 0.20 : 0.30;
             const maxAllowedTraps = Math.max(1, Math.floor(doorsCount * trapLimitPercentage));
 
@@ -558,36 +613,91 @@
             document.getElementById('prize-modal').style.display = 'flex';
         }
 
-        function shareWin() {
-            const prizeText = roomPrizes[currentRoom] || "$1,000,000";
-            const text = encodeURIComponent(`🎉 Я щойно виграв ${prizeText} у грі Hotel 13! Спробуй і ти пройти всі кімнати:`);
-            
-            if (tg && tg.openTelegramLink) {
-                tg.openTelegramLink(`https://t.me/share/url?url=&text=${text}`);
-            } else if (navigator.share) {
-                navigator.share({
-                    title: 'Hotel 13',
-                    text: `🎉 Я щойно виграв ${prizeText} у грі Hotel 13!`,
-                }).catch(() => {});
-            } else {
-                navigator.clipboard.writeText(`🎉 Я щойно виграв ${prizeText} у грі Hotel 13!`);
-                alert("Текст виграшу скопійовано в буфер обміну!");
-            }
-        }
-
         function takePrize() {
-            const prizeText = roomPrizes[currentRoom] || "0";
-            const prizeAmount = parseInt(prizeText.replace(/\D/g, ''), 10);
+            lastClaimedPrize = roomPrizes[currentRoom] || "$0";
+            const prizeAmount = parseInt(lastClaimedPrize.replace(/\D/g, ''), 10);
 
             if (prizeAmount > 0) {
                 userBalance += prizeAmount;
                 updateWalletUI();
-                alert(`💰 Ви успішно забрали приз: ${prizeAmount} $ROOM!\nГроші зараховано на ваш баланс. Гра починається з початку.`);
-            } else {
-                alert("Ви вийшли з гри.");
             }
 
             document.getElementById('prize-modal').style.display = 'none';
+
+            // Оновлюємо вміст візуальної картки
+            document.getElementById('card-prize-val').innerText = lastClaimedPrize;
+            document.getElementById('card-player-name').innerText = playerName;
+            document.getElementById('card-room-info').innerText = `Успішно пройдено Кімнату ${lastPassedRoom} у Hotel 13`;
+
+            // Відкриваємо модалку виводу з карткою результату
+            document.getElementById('success-claim-modal').style.display = 'flex';
+        }
+
+        async function shareSuccessWin() {
+            const btn = document.getElementById('share-btn');
+            btn.innerText = "⏳ Формуємо картку...";
+            btn.disabled = true;
+
+            const cardElement = document.getElementById('shareable-result-card');
+            const shareText = `🔥 Гравець ${playerName} щойно виграв і забрав ${lastClaimedPrize} у гри Hotel 13 (Кімната ${lastPassedRoom})! Спробуй перевершити цей результат! 🚀`;
+
+            try {
+                // Створення зображення картки з DOM через html2canvas
+                const canvas = await html2canvas(cardElement, { scale: 2, backgroundColor: null });
+                
+                canvas.toBlob(async (blob) => {
+                    const file = new File([blob], `hotel13_win_${lastClaimedPrize}.png`, { type: 'image/png' });
+
+                    // 1. Спроба використати нативний мобільний Web Share з файлом зображення
+                    if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+                        try {
+                            await navigator.share({
+                                title: 'Hotel 13 Win',
+                                text: shareText,
+                                files: [file]
+                            });
+                            btn.innerText = "🚀 Розповісти про успіх";
+                            btn.disabled = false;
+                            return;
+                        } catch (e) {
+                            console.log("Share call failed/cancelled", e);
+                        }
+                    }
+
+                    // 2. Якщо в Telegram WebApp — пересилання через Telegram
+                    if (tg && tg.openTelegramLink) {
+                        const tgShareUrl = `https://t.me/share/url?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(shareText)}`;
+                        tg.openTelegramLink(tgShareUrl);
+                    } else {
+                        // 3. Фолбек: Завантаження зображення картки + Копіювання тексту
+                        const link = document.createElement('a');
+                        link.download = `Hotel13_Win_${lastClaimedPrize}.png`;
+                        link.href = canvas.toDataURL();
+                        link.click();
+
+                        if (navigator.clipboard) {
+                            await navigator.clipboard.writeText(shareText);
+                        }
+                        alert("📸 Картку результату завантажено, а текст скопійовано в буфер обміну! Поділіться ним у будь-якому чаті.");
+                    }
+
+                    btn.innerText = "🚀 Розповісти про успіх";
+                    btn.disabled = false;
+                }, 'image/png');
+
+            } catch (err) {
+                console.error(err);
+                alert("Не вдалося згенерувати картку. Відкриваємо текстове повідомлення.");
+                if (tg && tg.openTelegramLink) {
+                    tg.openTelegramLink(`https://t.me/share/url?text=${encodeURIComponent(shareText)}`);
+                }
+                btn.innerText = "🚀 Розповісти про успіх";
+                btn.disabled = false;
+            }
+        }
+
+        function closeSuccessModalAndReset() {
+            document.getElementById('success-claim-modal').style.display = 'none';
             currentRoom = 1;
             accumulatedTraps = 0;
             resetRoomState(true);
