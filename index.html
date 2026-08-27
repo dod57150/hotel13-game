@@ -666,6 +666,129 @@
 
         resetRoomState(false);
         renderRoom();
+   <script>
+  // ... тут знаходиться весь ваш ІСНУЮЧИЙ код гри ...
+
+
+  // ==========================================
+  // ВСТАВЛЯЙТЕ НОВИЙ КОД ОДРАЗУ СУДИ (В КІНЕЦЬ):
+  // ==========================================
+
+  const BACKEND_URL = "https://your-server.com/api/send-card";
+
+  function showShareButton(winAmount) {
+    const shareBtn = document.getElementById('share-card-btn');
+    if (shareBtn) {
+      shareBtn.style.display = 'block'; // робимо кнопку видимою
+      shareBtn.dataset.winAmount = winAmount;
+    }
+  }
+
+  async function shareVictoryCard() {
+    const tg = window.Telegram?.WebApp;
+    const playerName = tg?.initDataUnsafe?.user?.first_name || "Гравець";
+    const userId = tg?.initDataUnsafe?.user?.id;
+    const initData = tg?.initData;
+
+    const winAmount = document.getElementById('share-card-btn')?.dataset.winAmount || "100";
+    const floorCleared = (typeof currentFloor !== 'undefined') ? currentFloor : 1;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 1200;
+    canvas.height = 630;
+    const ctx = canvas.getContext('2d');
+
+    // Малюємо картку
+    const bgGradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+    bgGradient.addColorStop(0, '#0F0C20');
+    bgGradient.addColorStop(0.5, '#15102A');
+    bgGradient.addColorStop(1, '#06040A');
+    ctx.fillStyle = bgGradient;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    const glow = ctx.createRadialGradient(600, 315, 50, 600, 315, 450);
+    glow.addColorStop(0, 'rgba(235, 179, 54, 0.18)');
+    glow.addColorStop(1, 'transparent');
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.04)';
+    ctx.strokeStyle = 'rgba(235, 179, 54, 0.4)';
+    ctx.lineWidth = 3;
+    drawRoundedRect(ctx, 100, 80, 1000, 470, 24);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = '#EBB336';
+    ctx.font = 'bold 36px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('HOTEL 13 • VICTORY CARD', 600, 150);
+
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 52px sans-serif';
+    ctx.fillText(`${playerName} пройшов Кімнату ${floorCleared}!`, 600, 240);
+
+    ctx.fillStyle = '#4DE7A8';
+    ctx.font = 'extrabold 80px sans-serif';
+    ctx.fillText(`+$${winAmount} $ROOM`, 600, 360);
+
+    ctx.fillStyle = '#A0A0B0';
+    ctx.font = '28px sans-serif';
+    ctx.fillText('Заходь у Hotel 13 та випробуй свою удачу!', 600, 450);
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+    ctx.font = 'italic 20px sans-serif';
+    ctx.fillText('Витрати приховано • Виграш збережено на баланс', 600, 500);
+
+    // Відправка
+    canvas.toBlob(async (blob) => {
+      if (!userId) {
+        const shareUrl = `https://t.me/YourBotUsername?startapp=ref_guest`;
+        const shareText = `🔥 Я щойно здолав Кімнату ${floorCleared} у Hotel 13!`;
+        window.open(`https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`, '_blank');
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("photo", blob, "victory-card.png");
+      formData.append("user_id", userId);
+      formData.append("init_data", initData);
+
+      try {
+        tg?.MainButton?.setText("НАДСИЛАННЯ...").show();
+        const response = await fetch(BACKEND_URL, { method: "POST", body: formData });
+        const result = await response.json();
+
+        if (result.ok) {
+          tg?.HapticFeedback?.notificationOccurred('success');
+          tg?.showAlert("🏆 Картку перемоги надіслано у ваш чат з ботом!");
+        } else {
+          throw new Error(result.error);
+        }
+      } catch (err) {
+        const shareUrl = `https://t.me/YourBotUsername?startapp=ref_${userId}`;
+        const shareText = `🔥 Я щойно здолав Кімнату ${floorCleared} у Hotel 13!`;
+        tg?.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`);
+      } finally {
+        tg?.MainButton?.hide();
+      }
+    }, "image/png");
+  }
+
+  function drawRoundedRect(ctx, x, y, width, height, radius) {
+    ctx.beginPath();
+    ctx.moveTo(x + radius, y);
+    ctx.lineTo(x + width - radius, y);
+    ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+    ctx.lineTo(x + width, y + height - radius);
+    ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+    ctx.lineTo(x + radius, y + height);
+    ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+    ctx.lineTo(x, y + radius);
+    ctx.quadraticCurveTo(x, y, x + radius, y);
+    ctx.closePath();
+  }
+</script>
     </script>
 </body>
 </html>
