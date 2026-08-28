@@ -332,6 +332,9 @@
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 
     <script>
+        // ВКАЖІТЬ ТУТ ОФІЦІЙНЕ ЧИСТЕ ПОСИЛАННЯ НА ВАШОГО БОТА ЧИ MINI APP
+        const BOT_LINK = "https://t.me/your_bot_username"; 
+
         const tg = (window.Telegram && window.Telegram.WebApp) ? window.Telegram.WebApp : null;
         let playerName = "Гравець";
 
@@ -633,13 +636,28 @@
 
         async function shareSuccessWin() {
             const btn = document.getElementById('share-btn');
+            const shareText = `🔥 Я щойно забрав ${lastClaimedPrize} у Hotel 13 (Кімната ${lastPassedRoom})! Спробуй перевершити мій результат! 🚀`;
+
+            // 1. ПОСИЛАННЯ ДЛЯ TELEGRAM WEBAPP (Без хешів #tgWebAppData)
+            if (tg && tg.openTelegramLink) {
+                // Використовуємо офіційний нативний метод Telegram для вибору чату та поширення
+                if (typeof tg.shareUrl === 'function') {
+                    tg.shareUrl(BOT_LINK, shareText);
+                    return;
+                }
+
+                // Резервний перевірений метод переадресації для Telegram
+                const tgShareUrl = `https://t.me/share/url?url=${encodeURIComponent(BOT_LINK)}&text=${encodeURIComponent(shareText)}`;
+                tg.openTelegramLink(tgShareUrl);
+                return;
+            }
+
+            // 2. ДЛЯ ЗВИЧАЙНОГО БРАУЗЕРА (Генерація графічної картки через html2canvas)
             if (btn) {
                 btn.innerText = "⏳ Формуємо картку...";
                 btn.disabled = true;
             }
 
-            const cleanUrl = window.location.origin + window.location.pathname;
-            const shareText = `🔥 Я щойно забрав ${lastClaimedPrize} у Hotel 13 (Кімната ${lastPassedRoom})! Спробуй перевершити мій результат! 🚀`;
             const cardElement = document.getElementById('shareable-result-card');
 
             try {
@@ -648,36 +666,28 @@
                 canvas.toBlob(async (blob) => {
                     const file = new File([blob], `hotel13_win_${lastClaimedPrize}.png`, { type: 'image/png' });
 
+                    // Web Share API для мобільних браузерів (Safari, Chrome)
                     if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
                         try {
                             await navigator.share({
                                 title: 'Hotel 13 Win',
-                                text: `${shareText}\n${cleanUrl}`,
+                                text: `${shareText}\n${BOT_LINK}`,
                                 files: [file]
                             });
-                            if (btn) {
-                                btn.innerText = "🚀 Розповісти про успіх";
-                                btn.disabled = false;
-                            }
-                            return;
                         } catch (e) {
                             console.log("Share cancelled or failed", e);
                         }
-                    }
-
-                    if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.openTelegramLink) {
-                        const tgShareUrl = `https://t.me/share/url?url=${encodeURIComponent(cleanUrl)}&text=${encodeURIComponent(shareText)}`;
-                        window.Telegram.WebApp.openTelegramLink(tgShareUrl);
                     } else {
+                        // Фолбек для десктопних браузерів: завантаження фото + копіювання тексту
                         const link = document.createElement('a');
                         link.download = `Hotel13_Win_${lastClaimedPrize}.png`;
                         link.href = canvas.toDataURL();
                         link.click();
 
                         if (navigator.clipboard) {
-                            await navigator.clipboard.writeText(`${shareText}\n${cleanUrl}`);
+                            await navigator.clipboard.writeText(`${shareText}\n${BOT_LINK}`);
                         }
-                        alert("📸 Картку завантажено, а коротке посилання скопійовано!");
+                        alert("📸 Картку завантажено, а посилання скопійовано в буфер обміну!");
                     }
 
                     if (btn) {
@@ -688,12 +698,6 @@
 
             } catch (err) {
                 console.error("Error sharing win card:", err);
-
-                if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.openTelegramLink) {
-                    const tgShareUrl = `https://t.me/share/url?url=${encodeURIComponent(cleanUrl)}&text=${encodeURIComponent(shareText)}`;
-                    window.Telegram.WebApp.openTelegramLink(tgShareUrl);
-                }
-
                 if (btn) {
                     btn.innerText = "🚀 Розповісти про успіх";
                     btn.disabled = false;
